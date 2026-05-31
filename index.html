@@ -988,21 +988,51 @@ function getCardPrice(card) {
   return getTCGPrice(card);
 }
 
-/* Genera URL de búsqueda en Cardmarket para la carta */
+/* ── Cardmarket: URL directa de la API o búsqueda con edición filtrada ── */
 function getCardmarketUrl(card) {
-  // Cardmarket España — búsqueda por nombre de carta
-  const name = encodeURIComponent(card.name);
-  // Si la carta tiene URL directa de la API, úsala
+  // La API pokemontcg.io devuelve la URL exacta de Cardmarket cuando existe
   if (card.cardmarket?.url) return card.cardmarket.url;
-  // Fallback: búsqueda general en Cardmarket
-  return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${name}`;
+
+  // Nombres de edición en Cardmarket (exactos para el filtro de expansión)
+  const CM_EDITIONS = {
+    'me2':    'Phantasmal Flames',
+    'me2pt5': 'Ascended Heroes',
+    'me3':    'Perfect Order',
+    'me4':    'Chaos Rising',
+  };
+  const edition = CM_EDITIONS[card.set?.id] || card.set?.name || '';
+  const name    = encodeURIComponent(card.name);
+  const exp     = encodeURIComponent(edition);
+  // searchString = nombre de carta, expansión = filtra solo esa colección
+  return `https://www.cardmarket.com/es/Pokemon/Products/Singles/${exp.replace(/%20/g,'+')}/${name.replace(/%20/g,'+')}`;
 }
 
-/* Genera URL de búsqueda de cartas GRADEADAS en Cardmarket */
+/* ── PriceCharting: URL directa al producto exacto ── */
 function getGradedUrl(card) {
-  const name = encodeURIComponent(card.name);
-  const query = encodeURIComponent(card.name + ' Pokemon Card');
-  return `https://www.pricecharting.com/search-products?q=${query}&type=prices`;
+  // PriceCharting tiene URLs con formato: /game/SET-SLUG/CARD-NAME-NUMBER
+  // Ej: /game/pokemon-phantasmal-flames/oddish-1
+  const PC_SLUGS = {
+    'me2':    'pokemon-phantasmal-flames',
+    'me2pt5': 'pokemon-ascended-heroes',
+    'me3':    'pokemon-perfect-order',
+    'me4':    'pokemon-chaos-rising',
+  };
+  const setSlug  = PC_SLUGS[card.set?.id];
+  // Slug del nombre: minúsculas, espacios y caracteres especiales → guión
+  const nameSlug = card.name
+    .toLowerCase()
+    .replace(/['']/g, '')       // quitar apóstrofes
+    .replace(/[^a-z0-9]+/g, '-')// todo lo demás → guión
+    .replace(/^-|-$/g, '');     // limpiar bordes
+  const num = card.number || '';
+
+  if (setSlug) {
+    // URL directa al producto → lleva exactamente a la carta
+    return `https://www.pricecharting.com/game/${setSlug}/${nameSlug}-${num}`;
+  }
+  // Fallback: búsqueda con nombre + número + set
+  const q = encodeURIComponent(`${card.name} #${num} ${card.set?.name || ''}`);
+  return `https://www.pricecharting.com/search-products?q=${q}&type=prices`;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1070,11 +1100,11 @@ function renderCards() {
         <div class="card-rarity ${rarityClass}">${card.rarity ?? '—'}</div>
         ${priceBlock}
         <div class="cm-buttons">
-          <a class="btn-cm" href="${cmUrl}" target="_blank" rel="noopener">
-            🏷️ Sin gradear
+          <a class="btn-cm" href="${cmUrl}" target="_blank" rel="noopener" title="Ver precio sin gradear en Cardmarket">
+            🏷️ Cardmarket
           </a>
-          <a class="btn-cm btn-graded" href="${gradedUrl}" target="_blank" rel="noopener">
-            📊 PriceCharting
+          <a class="btn-cm btn-graded" href="${gradedUrl}" target="_blank" rel="noopener" title="Ver precios gradeados en PriceCharting">
+            🏆 Gradeada
           </a>
         </div>
       </div>
