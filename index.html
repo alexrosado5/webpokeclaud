@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon TCG — Colecciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ── RESET & TOKENS ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f1a;
+      --surface:   #141726;
+      --surface2:  #1c2138;
+      --border:    rgba(255,255,255,.07);
+      --accent:    #ffe84d;
+      --accent2:   #ff6b35;
+      --text:      #e8eaf6;
+      --muted:     #7986cb;
+      --green:     #69f0ae;
+      --red:       #ff5252;
+      --radius:    14px;
+      --shadow:    0 8px 32px rgba(0,0,0,.5);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ─────────────────────────────────────────────────── */
+    header {
+      position: relative;
+      text-align: center;
+      padding: 70px 20px 50px;
+      overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,232,77,.13) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .pokeball-bg {
+      position: absolute;
+      top: -120px; left: 50%; transform: translateX(-50%);
+      width: 500px; height: 500px;
+      border-radius: 50%;
+      border: 60px solid rgba(255,232,77,.04);
+      pointer-events: none;
+    }
+    header h1 {
+      font-family: 'Bangers', cursive;
+      font-size: clamp(3rem, 8vw, 6rem);
+      letter-spacing: 4px;
+      color: var(--accent);
+      text-shadow: 0 0 40px rgba(255,232,77,.4), 4px 4px 0 #ff6b35;
+      position: relative;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 1.1rem;
+      margin-top: 10px;
+      position: relative;
+    }
+
+    /* ── CONTROLES ────────────────────────────────────────────── */
+    .controls {
+      max-width: 1400px;
+      margin: 0 auto 30px;
+      padding: 0 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .search-wrap {
+      flex: 1;
+      min-width: 220px;
+      position: relative;
+    }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 12px 20px 12px 44px;
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+      font-size: .95rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap svg {
+      position: absolute; left: 15px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted); pointer-events: none;
+    }
+    select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 12px 20px;
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+      font-size: .9rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .btn-api-key {
+      background: var(--accent);
+      color: #0d0f1a;
+      border: none;
+      border-radius: 40px;
+      padding: 12px 22px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      font-size: .9rem;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn-api-key:hover { opacity: .85; }
+
+    /* ── STATS ────────────────────────────────────────────────── */
+    .stats-bar {
+      max-width: 1400px;
+      margin: 0 auto 30px;
+      padding: 0 20px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .9rem;
+    }
+    .stat strong { color: var(--accent); font-size: 1.2rem; }
+
+    /* ── GRID DE SETS ─────────────────────────────────────────── */
+    .sets-grid {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .set-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s, border-color .2s;
+      position: relative;
+    }
+    .set-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow);
+      border-color: rgba(255,232,77,.3);
+    }
+    .set-card-header {
+      background: var(--surface2);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .set-logo {
+      height: 44px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.5));
+    }
+    .set-symbol {
+      height: 28px;
+      object-fit: contain;
+      opacity: .7;
+    }
+    .set-info { flex: 1; min-width: 0; }
+    .set-name {
+      font-weight: 900;
+      font-size: .95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .set-series { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+    .set-card-body { padding: 14px 20px; }
+    .set-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    .set-meta span strong { color: var(--text); }
+    .set-date { font-size: .78rem; color: var(--muted); margin-top: 6px; }
+    .badge {
+      display: inline-block;
+      background: rgba(255,232,77,.12);
+      color: var(--accent);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: .72rem;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    /* ── LOADER ───────────────────────────────────────────────── */
+    .loader {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--muted);
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--surface2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── ERROR / INFO ─────────────────────────────────────────── */
+    .msg-box {
+      max-width: 600px;
+      margin: 60px auto;
+      text-align: center;
+      padding: 30px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--muted);
+    }
+    .msg-box h3 { color: var(--text); margin-bottom: 8px; }
+    .msg-box code {
+      background: var(--surface2);
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: var(--accent);
+      font-size: .85rem;
+    }
+
+    /* ── MODAL DE SET (vista de cartas) ───────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.85);
+      z-index: 1000;
+      overflow-y: auto;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: block; }
+
+    .modal {
+      max-width: 1400px;
+      margin: 30px auto;
+      padding: 0 16px 60px;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 30px 0 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .modal-logo { height: 56px; object-fit: contain; }
+    .modal-title { font-family: 'Bangers', cursive; font-size: 2.2rem; letter-spacing: 2px; color: var(--accent); }
+    .modal-sub { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+    .btn-close {
+      margin-left: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 50%;
+      width: 42px; height: 42px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: background .2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-close:hover { background: var(--surface2); }
+
+    /* buscador dentro del modal */
+    .modal-controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .modal-controls .search-wrap { max-width: 360px; }
+
+    /* grid cartas */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 18px;
+    }
+
+    .card-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform .2s, box-shadow .2s;
+      cursor: default;
+    }
+    .card-item:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: 0 16px 40px rgba(0,0,0,.6);
+      border-color: rgba(255,232,77,.25);
+      z-index: 2;
+    }
+    .card-img-wrap {
+      background: var(--surface2);
+      aspect-ratio: 2.5/3.5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: opacity .3s;
+    }
+    /* placeholder para cartas sin imagen */
+    .card-placeholder {
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: .75rem;
+      text-align: center;
+      padding: 10px;
+    }
+    .card-placeholder span { font-size: 2rem; }
+
+    .card-body { padding: 10px 12px 14px; }
+    .card-num { font-size: .7rem; color: var(--muted); margin-bottom: 2px; }
+    .card-name {
+      font-weight: 700;
+      font-size: .88rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-rarity { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+
+    .price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      gap: 4px;
+    }
+    .price-tag {
+      font-family: 'Bangers', cursive;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      color: var(--accent);
+    }
+    .price-source {
+      font-size: .65rem;
+      color: var(--muted);
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .price-loading { font-size: .75rem; color: var(--muted); font-style: italic; }
+    .price-na { font-size: .75rem; color: var(--muted); }
+
+    /* tipo rarity colors */
+    .r-common    { color: #9e9e9e; }
+    .r-uncommon  { color: #66bb6a; }
+    .r-rare      { color: #42a5f5; }
+    .r-double    { color: #ab47bc; }
+    .r-ultra     { color: #ffa726; }
+    .r-secret    { color: #ef5350; }
+    .r-hyper     { color: #f06292; }
+    .r-promo     { color: var(--accent); }
+
+    /* ── API KEY MODAL ────────────────────────────────────────── */
+    .key-modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.9);
+      z-index: 2000;
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+    }
+    .key-modal-overlay.open { display: flex; }
+    .key-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      max-width: 480px;
+      width: 90%;
+    }
+    .key-modal h3 { font-family: 'Bangers', cursive; font-size: 1.8rem; color: var(--accent); letter-spacing: 2px; margin-bottom: 12px; }
+    .key-modal p { color: var(--muted); font-size: .9rem; margin-bottom: 20px; line-height: 1.6; }
+    .key-modal input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'Nunito', sans-serif;
+      font-size: .9rem;
+      outline: none;
+      margin-bottom: 14px;
+    }
+    .key-modal input:focus { border-color: var(--accent); }
+    .key-modal-actions { display: flex; gap: 10px; }
+    .btn-save {
+      flex: 1;
+      background: var(--accent);
+      color: #0d0f1a;
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-cancel {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-family: 'Nunito', sans-serif;
+      cursor: pointer;
+    }
+    .key-modal a { color: var(--accent); }
+
+    /* ── TOAST ────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 30px; right: 30px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      color: var(--text);
+      font-size: .9rem;
+      z-index: 3000;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all .3s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── PAGINATION ───────────────────────────────────────────── */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+    .pagination button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: .85rem;
+      transition: background .2s;
+    }
+    .pagination button:hover,
+    .pagination button.active { background: var(--accent); color: #0d0f1a; font-weight: 700; }
+
+    /* ── FOOTER ───────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: var(--muted);
+      font-size: .8rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .sets-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+      .cards-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- POKEBALL BG -->
+<div class="pokeball-bg"></div>
+
+<!-- HEADER -->
+<header>
+  <h1>&#x25CF; Pokémon TCG</h1>
+  <p>Todas las colecciones · Precios en tiempo real</p>
+</header>
+
+<!-- CONTROLES PRINCIPALES -->
+<div class="controls">
+  <div class="search-wrap">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+    </svg>
+    <input id="searchSets" type="text" placeholder="Buscar colección…" />
+  </div>
+  <select id="filterSeries">
+    <option value="">Todas las series</option>
+  </select>
+  <select id="sortSets">
+    <option value="releaseDate-desc">Más reciente primero</option>
+    <option value="releaseDate-asc">Más antigua primero</option>
+    <option value="name-asc">Nombre A-Z</option>
+    <option value="total-desc">Más cartas</option>
+  </select>
+  <button class="btn-api-key" onclick="openKeyModal()">🔑 API Keys de precios</button>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar" id="statsBar">
+  <div class="stat"><strong id="statSets">—</strong> colecciones</div>
+  <div class="stat"><strong id="statCards">—</strong> cartas totales</div>
+  <div class="stat" id="statApiStat">
+    <span id="apiStatusDot">⚪</span>&nbsp;pokemontcg.io
+  </div>
+</div>
+
+<!-- SETS GRID -->
+<main class="sets-grid" id="setsGrid">
+  <div class="loader">
+    <div class="spinner"></div>
+    Cargando colecciones…
+  </div>
+</main>
+
+<!-- ═══════════ MODAL DE CARTAS ═══════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalContent">
+    <div class="modal-header" id="modalHeader">
+      <!-- se rellena dinámicamente -->
+    </div>
+    <div class="modal-controls">
+      <div class="search-wrap">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input id="searchCards" type="text" placeholder="Buscar carta…" oninput="filterCards()" />
+      </div>
+      <select id="filterRarity" onchange="filterCards()">
+        <option value="">Todas las rarezas</option>
+      </select>
+      <select id="sortCards" onchange="filterCards()">
+        <option value="number-asc">Número ↑</option>
+        <option value="number-desc">Número ↓</option>
+        <option value="name-asc">Nombre A-Z</option>
+        <option value="price-desc">Precio ↓</option>
+        <option value="price-asc">Precio ↑</option>
+      </select>
+    </div>
+    <div class="cards-grid" id="cardsGrid"></div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL API KEY ═══════════ -->
+<div class="key-modal-overlay" id="keyModalOverlay">
+  <div class="key-modal">
+    <h3>🔑 Configurar API Keys</h3>
+    <p>
+      Para mostrar precios reales necesitas registrarte gratis en
+      <a href="https://dev.pokemontcg.io" target="_blank">dev.pokemontcg.io</a>
+      y/o en <a href="https://app.pokemontcg.io" target="_blank">app.pokemontcg.io</a>.
+      La API de cartas e imágenes es gratuita sin key (límite reducido).
+      Para precios de mercado, ver sección de recursos abajo.
+    </p>
+    <label style="display:block;font-size:.85rem;margin-bottom:6px;color:var(--muted)">pokemontcg.io API Key (imágenes/datos)</label>
+    <input id="inputPokemonKey" type="text" placeholder="Pega tu API key aquí (opcional)" />
+    <label style="display:block;font-size:.85rem;margin-bottom:6px;color:var(--muted)">TCGPlayer / CardMarket Price Key (ver README)</label>
+    <input id="inputPriceKey" type="text" placeholder="API key de precios (ver instrucciones abajo)" />
+    <div class="key-modal-actions">
+      <button class="btn-save" onclick="saveKeys()">Guardar</button>
+      <button class="btn-cancel" onclick="closeKeyModal()">Cancelar</button>
+    </div>
+    <p style="margin-top:16px;font-size:.78rem;">
+      Las keys se guardan solo en tu navegador (localStorage). Nunca salen de tu dispositivo.
+    </p>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- FOOTER -->
+<footer>
+  Datos: <a href="https://pokemontcg.io" target="_blank">pokemontcg.io</a> ·
+  Precios: <a href="https://tcgplayer.com" target="_blank">TCGPlayer</a> /
+  <a href="https://cardmarket.com" target="_blank">CardMarket</a> ·
+  Imágenes © The Pokémon Company
+</footer>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIGURACIÓN — edita estos valores según tus necesidades
+   ══════════════════════════════════════════════════════════════ */
+const CONFIG = {
+  // API base pokemontcg.io v2
+  PKMN_API: 'https://api.pokemontcg.io/v2',
+
+  // ─── PRECIO: ELIGE UNO Y CONFIGURA ─────────────────────────
+  // Opciones:
+  //  'pokemontcg'  → precios incluidos en la API pokemontcg.io (campo cardmarket/tcgplayer)
+  //  'tcgapi'      → https://tcgapi.dev  (gratis 100 req/día)
+  //  'none'        → sin precios (solo datos e imágenes)
+  PRICE_MODE: 'pokemontcg',
+
+  CARDS_PER_PAGE: 60,
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ESTADO
+   ══════════════════════════════════════════════════════════════ */
+let allSets = [];
+let currentCards = [];
+let filteredCards = [];
+let currentPage = 1;
+let currentSet = null;
+
+/* ══════════════════════════════════════════════════════════════
+   KEYS (localStorage)
+   ══════════════════════════════════════════════════════════════ */
+function getKey(k) { return localStorage.getItem(k) || ''; }
+function saveKeys() {
+  localStorage.setItem('pkmnKey', document.getElementById('inputPokemonKey').value.trim());
+  localStorage.setItem('priceKey', document.getElementById('inputPriceKey').value.trim());
+  closeKeyModal();
+  showToast('✅ Keys guardadas');
+  loadSets(); // recargar con la nueva key
+}
+function openKeyModal() {
+  document.getElementById('inputPokemonKey').value = getKey('pkmnKey');
+  document.getElementById('inputPriceKey').value = getKey('priceKey');
+  document.getElementById('keyModalOverlay').classList.add('open');
+}
+function closeKeyModal() { document.getElementById('keyModalOverlay').classList.remove('open'); }
+
+/* ══════════════════════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════════════════════ */
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   API FETCH HELPER
+   ══════════════════════════════════════════════════════════════ */
+async function pkmnFetch(path, params = {}) {
+  const url = new URL(CONFIG.PKMN_API + path);
+  Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const headers = {};
+  const key = getKey('pkmnKey');
+  if (key) headers['X-Api-Key'] = key;
+  const res = await fetch(url.toString(), { headers });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CARGAR SETS
+   ══════════════════════════════════════════════════════════════ */
+async function loadSets() {
+  document.getElementById('setsGrid').innerHTML = `
+    <div class="loader"><div class="spinner"></div>Cargando colecciones…</div>`;
+  try {
+    const data = await pkmnFetch('/sets', { pageSize: 250, orderBy: '-releaseDate' });
+    allSets = data.data;
+
+    // stats
+    document.getElementById('statSets').textContent = allSets.length;
+    document.getElementById('statCards').textContent =
+      allSets.reduce((s, x) => s + x.total, 0).toLocaleString();
+    document.getElementById('apiStatusDot').textContent = '🟢';
+
+    // series filter
+    const series = [...new Set(allSets.map(s => s.series))].sort();
+    const sel = document.getElementById('filterSeries');
+    sel.innerHTML = '<option value="">Todas las series</option>' +
+      series.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    renderSets(allSets);
+  } catch (e) {
+    document.getElementById('apiStatusDot').textContent = '🔴';
+    document.getElementById('setsGrid').innerHTML = `
+      <div class="msg-box" style="grid-column:1/-1">
+        <h3>Error cargando colecciones</h3>
+        <p>Comprueba tu conexión o añade una API key.<br>
+        Registro gratuito en <a href="https://dev.pokemontcg.io" target="_blank" style="color:var(--accent)">dev.pokemontcg.io</a></p>
+        <br><code>${e.message}</code>
+      </div>`;
+  }
+}
+
+function renderSets(sets) {
+  if (!sets.length) {
+    document.getElementById('setsGrid').innerHTML =
+      '<div class="msg-box" style="grid-column:1/-1"><h3>Sin resultados</h3><p>Prueba con otro filtro.</p></div>';
+    return;
+  }
+  document.getElementById('setsGrid').innerHTML = sets.map(s => `
+    <div class="set-card" onclick="openSet('${s.id}')">
+      <div class="set-card-header">
+        ${s.images?.logo ? `<img class="set-logo" src="${s.images.logo}" alt="${s.name}" loading="lazy" />` :
+          `<span style="font-size:1.8rem">📦</span>`}
+        ${s.images?.symbol ? `<img class="set-symbol" src="${s.images.symbol}" alt="" loading="lazy" />` : ''}
+      </div>
+      <div class="set-card-body">
+        <div class="set-info">
+          <div class="set-name">${s.name}</div>
+          <div class="set-series">${s.series}</div>
+        </div>
+        <div class="set-meta" style="margin-top:10px">
+          <span><strong>${s.total}</strong> cartas</span>
+          <span><strong>${s.printedTotal}</strong> impresas</span>
+        </div>
+        <div class="set-date">📅 ${formatDate(s.releaseDate)}</div>
+        ${s.legalities?.standard === 'Legal' ? '<span class="badge">Standard</span>' :
+          s.legalities?.expanded === 'Legal' ? '<span class="badge" style="background:rgba(105,240,174,.12);color:var(--green)">Expanded</span>' :
+          '<span class="badge" style="opacity:.5">Unlimited</span>'}
+      </div>
+    </div>`).join('');
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const [y, m, day] = d.split('/');
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${day} ${months[parseInt(m)-1]} ${y}`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILTROS DE SETS
+   ══════════════════════════════════════════════════════════════ */
+function applySetFilters() {
+  const q = document.getElementById('searchSets').value.toLowerCase();
+  const series = document.getElementById('filterSeries').value;
+  const sort = document.getElementById('sortSets').value;
+
+  let filtered = allSets.filter(s =>
+    (!q || s.name.toLowerCase().includes(q) || s.series.toLowerCase().includes(q)) &&
+    (!series || s.series === series)
+  );
+
+  const [field, dir] = sort.split('-');
+  filtered.sort((a, b) => {
+    let av = a[field], bv = b[field];
+    if (field === 'releaseDate') { av = av||''; bv = bv||''; }
+    if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return dir === 'asc' ? av - bv : bv - av;
+  });
+
+  renderSets(filtered);
+}
+
+document.getElementById('searchSets').addEventListener('input', applySetFilters);
+document.getElementById('filterSeries').addEventListener('change', applySetFilters);
+document.getElementById('sortSets').addEventListener('change', applySetFilters);
+
+/* ══════════════════════════════════════════════════════════════
+   MODAL CARTAS — ABRIR
+   ══════════════════════════════════════════════════════════════ */
+async function openSet(setId) {
+  currentSet = allSets.find(s => s.id === setId);
+  currentPage = 1;
+  document.getElementById('searchCards').value = '';
+  document.getElementById('filterRarity').value = '';
+  document.getElementById('sortCards').value = 'number-asc';
+
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Header
+  document.getElementById('modalHeader').innerHTML = `
+    ${currentSet.images?.logo ? `<img class="modal-logo" src="${currentSet.images.logo}" alt="${currentSet.name}" />` : ''}
+    <div>
+      <div class="modal-title">${currentSet.name}</div>
+      <div class="modal-sub">${currentSet.series} · ${currentSet.total} cartas · ${formatDate(currentSet.releaseDate)}</div>
+    </div>
+    <button class="btn-close" onclick="closeModalBtn()">✕</button>`;
+
+  document.getElementById('cardsGrid').innerHTML =
+    '<div class="loader" style="grid-column:1/-1"><div class="spinner"></div>Cargando cartas…</div>';
+  document.getElementById('pagination').innerHTML = '';
+
+  try {
+    // Fetch todas las cartas del set (paginando si hay muchas)
+    let page = 1;
+    let cards = [];
+    let total = Infinity;
+    while (cards.length < total) {
+      const data = await pkmnFetch('/cards', {
+        q: `set.id:${setId}`,
+        pageSize: 250,
+        page,
+        orderBy: 'number',
+      });
+      cards = cards.concat(data.data);
+      total = data.totalCount;
+      if (data.data.length < 250) break;
+      page++;
+    }
+    currentCards = cards;
+
+    // rarities
+    const rarities = [...new Set(cards.map(c => c.rarity).filter(Boolean))].sort();
+    document.getElementById('filterRarity').innerHTML =
+      '<option value="">Todas las rarezas</option>' +
+      rarities.map(r => `<option value="${r}">${r}</option>`).join('');
+
+    filterCards();
+
+    // cargar precios en segundo plano
+    if (CONFIG.PRICE_MODE === 'pokemontcg') {
+      // los precios ya vienen en los datos de la carta
+      filterCards();
+    }
+  } catch(e) {
+    document.getElementById('cardsGrid').innerHTML =
+      `<div class="msg-box" style="grid-column:1/-1"><h3>Error</h3><p>${e.message}</p></div>`;
+  }
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModalBtn();
+}
+function closeModalBtn() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FILTROS DE CARTAS
+   ══════════════════════════════════════════════════════════════ */
+function filterCards() {
+  const q = document.getElementById('searchCards').value.toLowerCase();
+  const rarity = document.getElementById('filterRarity').value;
+  const sort = document.getElementById('sortCards').value;
+
+  filteredCards = currentCards.filter(c =>
+    (!q || c.name.toLowerCase().includes(q) || (c.number||'').includes(q)) &&
+    (!rarity || c.rarity === rarity)
+  );
+
+  const [field, dir] = sort.split('-');
+  filteredCards.sort((a, b) => {
+    if (field === 'number') {
+      const an = parseInt(a.number) || 9999;
+      const bn = parseInt(b.number) || 9999;
+      return dir === 'asc' ? an - bn : bn - an;
+    }
+    if (field === 'name') {
+      return dir === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+    }
+    if (field === 'price') {
+      const ap = getCardPrice(a) || 0;
+      const bp = getCardPrice(b) || 0;
+      return dir === 'asc' ? ap - bp : bp - ap;
+    }
+    return 0;
+  });
+
+  currentPage = 1;
+  renderCards();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PRECIO (desde datos de pokemontcg.io)
+   La API devuelve precios de TCGPlayer y Cardmarket integrados
+   ══════════════════════════════════════════════════════════════ */
+function getCardPrice(card) {
+  // Cardmarket (EUR) — prioritario para ES
+  const cm = card.cardmarket?.prices;
+  if (cm) {
+    return cm.averageSellPrice ?? cm.trendPrice ?? cm.avg1 ?? null;
+  }
+  // TCGPlayer (USD) como fallback
+  const tcp = card.tcgplayer?.prices;
+  if (tcp) {
+    const variant = tcp.normal ?? tcp.holofoil ?? tcp.reverseHolofoil ?? Object.values(tcp)[0];
+    return variant?.market ?? variant?.mid ?? null;
+  }
+  return null;
+}
+
+function getPriceSource(card) {
+  if (card.cardmarket?.prices) return 'CardMarket €';
+  if (card.tcgplayer?.prices) return 'TCGPlayer $';
+  return null;
+}
+
+function getPriceCurrency(card) {
+  if (card.cardmarket?.prices) return '€';
+  return '$';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RENDER CARTAS (paginado)
+   ══════════════════════════════════════════════════════════════ */
+function renderCards() {
+  const perPage = CONFIG.CARDS_PER_PAGE;
+  const total = filteredCards.length;
+  const pages = Math.ceil(total / perPage);
+  const slice = filteredCards.slice((currentPage-1)*perPage, currentPage*perPage);
+
+  if (!slice.length) {
+    document.getElementById('cardsGrid').innerHTML =
+      '<div class="msg-box" style="grid-column:1/-1"><h3>Sin resultados</h3></div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('cardsGrid').innerHTML = slice.map(card => {
+    const price = getCardPrice(card);
+    const source = getPriceSource(card);
+    const currency = getPriceCurrency(card);
+    const rarityClass = getRarityClass(card.rarity);
+    const imgUrl = card.images?.small;
+
+    return `
+    <div class="card-item">
+      <div class="card-img-wrap">
+        ${imgUrl
+          ? `<img src="${imgUrl}" alt="${card.name}" loading="lazy"
+               onerror="this.parentElement.innerHTML='<div class=card-placeholder><span>🃏</span>${card.name}</div>'" />`
+          : `<div class="card-placeholder"><span>🃏</span><span>${card.name}</span></div>`
+        }
+      </div>
+      <div class="card-body">
+        <div class="card-num">#${card.number ?? '—'} · ${card.supertype ?? ''}</div>
+        <div class="card-name" title="${card.name}">${card.name}</div>
+        <div class="card-rarity ${rarityClass}">${card.rarity ?? '—'}</div>
+        <div class="price-row">
+          ${price !== null
+            ? `<span class="price-tag">${currency}${price.toFixed(2)}</span>
+               <span class="price-source">${source}</span>`
+            : `<span class="price-na">Sin precio</span>`
+          }
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // paginación
+  if (pages <= 1) {
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+  let paginHtml = '';
+  if (currentPage > 1) paginHtml += `<button onclick="goPage(${currentPage-1})">← Ant</button>`;
+  const start = Math.max(1, currentPage-3);
+  const end = Math.min(pages, currentPage+3);
+  for (let i = start; i <= end; i++) {
+    paginHtml += `<button class="${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  if (currentPage < pages) paginHtml += `<button onclick="goPage(${currentPage+1})">Sig →</button>`;
+  document.getElementById('pagination').innerHTML = paginHtml;
+}
+
+function goPage(p) {
+  currentPage = p;
+  renderCards();
+  document.getElementById('modalOverlay').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function getRarityClass(rarity) {
+  if (!rarity) return '';
+  const r = rarity.toLowerCase();
+  if (r.includes('common') && !r.includes('un')) return 'r-common';
+  if (r.includes('uncommon')) return 'r-uncommon';
+  if (r.includes('rare holo v') || r.includes('double')) return 'r-double';
+  if (r.includes('ultra') || r.includes('full art') || r.includes('v')) return 'r-ultra';
+  if (r.includes('secret') || r.includes('rainbow')) return 'r-secret';
+  if (r.includes('hyper')) return 'r-hyper';
+  if (r.includes('promo')) return 'r-promo';
+  if (r.includes('rare')) return 'r-rare';
+  return '';
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════════════ */
+loadSets();
+</script>
+</body>
+</html>
