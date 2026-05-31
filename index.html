@@ -988,24 +988,46 @@ function getCardPrice(card) {
   return getTCGPrice(card);
 }
 
-/* ── Cardmarket: URL directa de la API o búsqueda con edición filtrada ── */
+/* ── Cardmarket: URL directa al single exacto ── */
 function getCardmarketUrl(card) {
-  // La API pokemontcg.io devuelve la URL exacta de Cardmarket cuando existe
-  if (card.cardmarket?.url) return card.cardmarket.url;
+  // La API pokemontcg.io devuelve la URL exacta — úsala si existe
+  if (card.cardmarket?.url) {
+    // Convertir a español: /en/ → /es/
+    return card.cardmarket.url.replace('cardmarket.com/en/', 'cardmarket.com/es/');
+  }
 
-  // Formato correcto: "Crobat (CRI 093)" — nombre + código set + número
+  // Construir URL directa con el formato de Cardmarket:
+  // /es/Pokemon/Products/Singles/Chaos-Rising/Crobat-V2-CRI093
+  const CM_SET_SLUGS = {
+    'me2':    'Phantasmal-Flames',
+    'me2pt5': 'Ascended-Heroes',
+    'me3':    'Perfect-Order',
+    'me4':    'Chaos-Rising',
+  };
   const CM_CODES = {
     'me2':    'PFL',
     'me2pt5': 'ASC',
     'me3':    'POR',
     'me4':    'CRI',
   };
-  const code = CM_CODES[card.set?.id] || '';
-  const num  = String(card.number || '').padStart(3, '0');
-  const query = code
-    ? encodeURIComponent(`${card.name} (${code} ${num})`)
-    : encodeURIComponent(card.name);
-  return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${query}&category=1`;
+
+  const setSlug = CM_SET_SLUGS[card.set?.id];
+  const code    = CM_CODES[card.set?.id] || '';
+  const num     = String(card.number || '').padStart(3, '0');
+
+  // Slug del nombre: espacios → guión, minúsculas, sin caracteres raros
+  const nameSlug = card.name
+    .replace(/[''´`]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (setSlug && code) {
+    // URL directa → sin pasar por buscador
+    return `https://www.cardmarket.com/es/Pokemon/Products/Singles/${setSlug}/${nameSlug}-${code}${num}`;
+  }
+
+  // Fallback: búsqueda solo por nombre
+  return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${encodeURIComponent(card.name)}&category=1`;
 }
 
 /* ── PriceCharting: URL directa al producto exacto ── */
