@@ -993,18 +993,19 @@ function getCardmarketUrl(card) {
   // La API pokemontcg.io devuelve la URL exacta de Cardmarket cuando existe
   if (card.cardmarket?.url) return card.cardmarket.url;
 
-  // Nombres de edición en Cardmarket (exactos para el filtro de expansión)
-  const CM_EDITIONS = {
-    'me2':    'Phantasmal Flames',
-    'me2pt5': 'Ascended Heroes',
-    'me3':    'Perfect Order',
-    'me4':    'Chaos Rising',
+  // Formato correcto: "Crobat (CRI 093)" — nombre + código set + número
+  const CM_CODES = {
+    'me2':    'PFL',
+    'me2pt5': 'ASC',
+    'me3':    'POR',
+    'me4':    'CRI',
   };
-  const edition = CM_EDITIONS[card.set?.id] || card.set?.name || '';
-  const name    = encodeURIComponent(card.name);
-  const exp     = encodeURIComponent(edition);
-  // searchString = nombre de carta, expansión = filtra solo esa colección
-  return `https://www.cardmarket.com/es/Pokemon/Products/Singles/${exp.replace(/%20/g,'+')}/${name.replace(/%20/g,'+')}`;
+  const code = CM_CODES[card.set?.id] || '';
+  const num  = String(card.number || '').padStart(3, '0');
+  const query = code
+    ? encodeURIComponent(`${card.name} (${code} ${num})`)
+    : encodeURIComponent(card.name);
+  return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${query}&category=1`;
 }
 
 /* ── PriceCharting: URL directa al producto exacto ── */
