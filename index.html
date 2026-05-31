@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PokeClaud · PriceCards</title>
+  <link rel="icon" href="favicon.jpg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet" />
@@ -660,33 +661,18 @@
    CONFIGURACIÓN — edita estos valores según tus necesidades
    ══════════════════════════════════════════════════════════════ */
 const CONFIG = {
-  // API base pokemontcg.io v2
   PKMN_API: 'https://api.pokemontcg.io/v2',
-
-  // ─── PRECIO: ELIGE UNO Y CONFIGURA ─────────────────────────
-  // Opciones:
-  //  'pokemontcg'  → precios incluidos en la API pokemontcg.io (campo cardmarket/tcgplayer)
-  //  'tcgapi'      → https://tcgapi.dev  (gratis 100 req/día)
-  //  'none'        → sin precios (solo datos e imágenes)
   PRICE_MODE: 'pokemontcg',
-
   CARDS_PER_PAGE: 60,
 };
 
-/* ══════════════════════════════════════════════════════════════
-   ESTADO
-   ══════════════════════════════════════════════════════════════ */
 let allSets = [];
 let currentCards = [];
 let filteredCards = [];
 let currentPage = 1;
 let currentSet = null;
 
-/* ══════════════════════════════════════════════════════════════
-   KEYS (localStorage)
-   ══════════════════════════════════════════════════════════════ */
-// ── PON AQUÍ TU API KEY (solo tú editas este archivo) ──
-const PKMN_API_KEY = '8fdde067-1436-4e05-946a-5bbb105ae223';   // ← reemplaza este valor
+const PKMN_API_KEY = '8fdde067-1436-4e05-946a-5bbb105ae223';
 
 function getKey(k) {
   if (k === 'pkmnKey') return PKMN_API_KEY;
@@ -697,7 +683,7 @@ function saveKeys() {
   localStorage.setItem('priceKey', document.getElementById('inputPriceKey').value.trim());
   closeKeyModal();
   showToast('✅ Keys guardadas');
-  loadSets(); // recargar con la nueva key
+  loadSets();
 }
 function openKeyModal() {
   document.getElementById('inputPokemonKey').value = getKey('pkmnKey');
@@ -706,9 +692,6 @@ function openKeyModal() {
 }
 function closeKeyModal() { document.getElementById('keyModalOverlay').classList.remove('open'); }
 
-/* ══════════════════════════════════════════════════════════════
-   TOAST
-   ══════════════════════════════════════════════════════════════ */
 function showToast(msg, duration = 3000) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -716,9 +699,6 @@ function showToast(msg, duration = 3000) {
   setTimeout(() => t.classList.remove('show'), duration);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   API FETCH HELPER
-   ══════════════════════════════════════════════════════════════ */
 async function pkmnFetch(path, params = {}) {
   const url = new URL(CONFIG.PKMN_API + path);
   Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
@@ -730,9 +710,6 @@ async function pkmnFetch(path, params = {}) {
   return res.json();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   COLECCIONES DISPONIBLES — solo las que vendemos
-   ══════════════════════════════════════════════════════════════ */
 const NUESTRAS_COLECCIONES = {
   'me2':    { nombre: 'Fuegos Fantasmales',   ingles: 'Phantasmal Flames' },
   'me2pt5': { nombre: 'Héroes Ascendentes',   ingles: 'Ascended Heroes'   },
@@ -740,34 +717,21 @@ const NUESTRAS_COLECCIONES = {
   'me4':    { nombre: 'Caos Creciente',        ingles: 'Chaos Rising'      },
 };
 
-/* ══════════════════════════════════════════════════════════════
-   CARGAR SETS
-   ══════════════════════════════════════════════════════════════ */
 async function loadSets() {
   document.getElementById('setsGrid').innerHTML = `
     <div class="loader"><div class="spinner"></div>Cargando colecciones…</div>`;
   try {
     const data = await pkmnFetch('/sets', { pageSize: 250, orderBy: '-releaseDate' });
-
-    // Filtrar SOLO nuestras colecciones y añadir nombre en español
     allSets = data.data
       .filter(s => NUESTRAS_COLECCIONES[s.id])
-      .map(s => ({
-        ...s,
-        nombreES: NUESTRAS_COLECCIONES[s.id].nombre,
-      }))
-      // ordenar por fecha descendente
+      .map(s => ({ ...s, nombreES: NUESTRAS_COLECCIONES[s.id].nombre }))
       .sort((a, b) => (b.releaseDate || '').localeCompare(a.releaseDate || ''));
 
-    // stats
     document.getElementById('statSets').textContent = allSets.length;
     document.getElementById('statCards').textContent =
       allSets.reduce((s, x) => s + x.total, 0).toLocaleString();
     document.getElementById('apiStatusDot').textContent = '🟢';
-
-    // ocultar filtro de series (no hace falta con 4 colecciones)
     document.getElementById('filterSeries').style.display = 'none';
-
     renderSets(allSets);
   } catch (e) {
     document.getElementById('apiStatusDot').textContent = '🔴';
@@ -818,19 +782,14 @@ function formatDate(d) {
   return `${day} ${months[parseInt(m)-1]} ${y}`;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FILTROS DE SETS
-   ══════════════════════════════════════════════════════════════ */
 function applySetFilters() {
   const q = document.getElementById('searchSets').value.toLowerCase();
   const series = document.getElementById('filterSeries').value;
   const sort = document.getElementById('sortSets').value;
-
   let filtered = allSets.filter(s =>
     (!q || s.name.toLowerCase().includes(q) || s.series.toLowerCase().includes(q)) &&
     (!series || s.series === series)
   );
-
   const [field, dir] = sort.split('-');
   filtered.sort((a, b) => {
     let av = a[field], bv = b[field];
@@ -838,7 +797,6 @@ function applySetFilters() {
     if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
     return dir === 'asc' ? av - bv : bv - av;
   });
-
   renderSets(filtered);
 }
 
@@ -846,9 +804,6 @@ document.getElementById('searchSets').addEventListener('input', applySetFilters)
 document.getElementById('filterSeries').addEventListener('change', applySetFilters);
 document.getElementById('sortSets').addEventListener('change', applySetFilters);
 
-/* ══════════════════════════════════════════════════════════════
-   MODAL CARTAS — ABRIR
-   ══════════════════════════════════════════════════════════════ */
 async function openSet(setId) {
   currentSet = allSets.find(s => s.id === setId);
   currentPage = 1;
@@ -860,7 +815,6 @@ async function openSet(setId) {
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  // Header
   document.getElementById('modalHeader').innerHTML = `
     ${currentSet.images?.logo ? `<img class="modal-logo" src="${currentSet.images.logo}" alt="${currentSet.name}" />` : ''}
     <div>
@@ -874,7 +828,6 @@ async function openSet(setId) {
   document.getElementById('pagination').innerHTML = '';
 
   try {
-    // Fetch todas las cartas del set (paginando si hay muchas)
     let page = 1;
     let cards = [];
     let total = Infinity;
@@ -892,19 +845,12 @@ async function openSet(setId) {
     }
     currentCards = cards;
 
-    // rarities
     const rarities = [...new Set(cards.map(c => c.rarity).filter(Boolean))].sort();
     document.getElementById('filterRarity').innerHTML =
       '<option value="">Todas las rarezas</option>' +
       rarities.map(r => `<option value="${r}">${r}</option>`).join('');
 
     filterCards();
-
-    // cargar precios en segundo plano
-    if (CONFIG.PRICE_MODE === 'pokemontcg') {
-      // los precios ya vienen en los datos de la carta
-      filterCards();
-    }
   } catch(e) {
     document.getElementById('cardsGrid').innerHTML =
       `<div class="msg-box" style="grid-column:1/-1"><h3>Error</h3><p>${e.message}</p></div>`;
@@ -919,9 +865,6 @@ function closeModalBtn() {
   document.body.style.overflow = '';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FILTROS DE CARTAS
-   ══════════════════════════════════════════════════════════════ */
 function filterCards() {
   const q = document.getElementById('searchCards').value.toLowerCase();
   const rarity = document.getElementById('filterRarity').value;
@@ -954,9 +897,6 @@ function filterCards() {
   renderCards();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PRECIO — Cardmarket (€) prioritario, TCGPlayer fallback
-   ══════════════════════════════════════════════════════════════ */
 function getCMPrices(card) {
   const cm = card.cardmarket?.prices;
   if (!cm) return null;
@@ -980,16 +920,10 @@ function getCardPrice(card) {
   return getTCGPrice(card);
 }
 
-/* ── Cardmarket: URL directa al single exacto ── */
 function getCardmarketUrl(card) {
-  // La API pokemontcg.io devuelve la URL exacta — úsala si existe
   if (card.cardmarket?.url) {
-    // Convertir a español: /en/ → /es/
     return card.cardmarket.url.replace('cardmarket.com/en/', 'cardmarket.com/es/');
   }
-
-  // Construir URL directa con el formato de Cardmarket:
-  // /es/Pokemon/Products/Singles/Chaos-Rising/Crobat-V2-CRI093
   const CM_SET_SLUGS = {
     'me2':    'Phantasmal-Flames',
     'me2pt5': 'Ascended-Heroes',
@@ -1002,30 +936,20 @@ function getCardmarketUrl(card) {
     'me3':    'POR',
     'me4':    'CRI',
   };
-
   const setSlug = CM_SET_SLUGS[card.set?.id];
   const code    = CM_CODES[card.set?.id] || '';
   const num     = String(card.number || '').padStart(3, '0');
-
-  // Slug del nombre: espacios → guión, minúsculas, sin caracteres raros
   const nameSlug = card.name
     .replace(/[''´`]/g, '')
     .replace(/[^a-zA-Z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-
   if (setSlug && code) {
-    // URL directa → sin pasar por buscador
     return `https://www.cardmarket.com/es/Pokemon/Products/Singles/${setSlug}/${nameSlug}-${code}${num}`;
   }
-
-  // Fallback: búsqueda solo por nombre
   return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${encodeURIComponent(card.name)}&category=1`;
 }
 
-/* ── PriceCharting: URL directa al producto exacto ── */
 function getGradedUrl(card) {
-  // PriceCharting tiene URLs con formato: /game/SET-SLUG/CARD-NAME-NUMBER
-  // Ej: /game/pokemon-phantasmal-flames/oddish-1
   const PC_SLUGS = {
     'me2':    'pokemon-phantasmal-flames',
     'me2pt5': 'pokemon-ascended-heroes',
@@ -1033,26 +957,19 @@ function getGradedUrl(card) {
     'me4':    'pokemon-chaos-rising',
   };
   const setSlug  = PC_SLUGS[card.set?.id];
-  // Slug del nombre: minúsculas, espacios y caracteres especiales → guión
   const nameSlug = card.name
     .toLowerCase()
-    .replace(/['']/g, '')       // quitar apóstrofes
-    .replace(/[^a-z0-9]+/g, '-')// todo lo demás → guión
-    .replace(/^-|-$/g, '');     // limpiar bordes
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
   const num = card.number || '';
-
   if (setSlug) {
-    // URL directa al producto → lleva exactamente a la carta
     return `https://www.pricecharting.com/game/${setSlug}/${nameSlug}-${num}`;
   }
-  // Fallback: búsqueda con nombre + número + set
   const q = encodeURIComponent(`${card.name} #${num} ${card.set?.name || ''}`);
   return `https://www.pricecharting.com/search-products?q=${q}&type=prices`;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   RENDER CARTAS (paginado)
-   ══════════════════════════════════════════════════════════════ */
 function renderCards() {
   const perPage = CONFIG.CARDS_PER_PAGE;
   const total = filteredCards.length;
@@ -1067,14 +984,12 @@ function renderCards() {
   }
 
   document.getElementById('cardsGrid').innerHTML = slice.map(card => {
-    const cm       = getCMPrices(card);
-    const tcgPrice = getTCGPrice(card);
+    const cm        = getCMPrices(card);
+    const tcgPrice  = getTCGPrice(card);
     const rarityClass = getRarityClass(card.rarity);
-    const imgUrl   = card.images?.small;
-    const cmUrl    = getCardmarketUrl(card);
+    const imgUrl    = card.images?.small;
     const gradedUrl = getGradedUrl(card);
 
-    // bloque de precios
     let priceBlock = '';
     if (cm) {
       priceBlock = `
@@ -1123,7 +1038,6 @@ function renderCards() {
     </div>`;
   }).join('');
 
-  // paginación
   if (pages <= 1) {
     document.getElementById('pagination').innerHTML = '';
     return;
@@ -1159,9 +1073,6 @@ function getRarityClass(rarity) {
   return '';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   INIT
-   ══════════════════════════════════════════════════════════════ */
 loadSets();
 </script>
 </body>
