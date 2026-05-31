@@ -985,7 +985,8 @@ function getCardmarketUrl(card) {
 /* Genera URL de búsqueda de cartas GRADEADAS en Cardmarket */
 function getGradedUrl(card) {
   const name = encodeURIComponent(card.name);
-  return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${name}+PSA`;
+  const query = encodeURIComponent(card.name + ' Pokemon Card');
+  return `https://www.pricecharting.com/search-products?q=${query}&type=prices`;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1057,7 +1058,7 @@ function renderCards() {
             🏷️ Sin gradear
           </a>
           <a class="btn-cm btn-graded" href="${gradedUrl}" target="_blank" rel="noopener">
-            🏆 Gradeada
+            📊 PriceCharting
           </a>
         </div>
       </div>
