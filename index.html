@@ -370,28 +370,68 @@
     }
     .card-rarity { font-size: .72rem; color: var(--muted); margin-top: 2px; }
 
+    .price-section { margin-top: 8px; }
+    .price-label {
+      font-size: .68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 3px;
+    }
     .price-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-top: 8px;
-      gap: 4px;
+      gap: 6px;
     }
     .price-tag {
       font-family: 'Bangers', cursive;
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       letter-spacing: 1px;
       color: var(--accent);
     }
-    .price-source {
-      font-size: .65rem;
-      color: var(--muted);
-      background: var(--surface2);
+    .price-badge {
+      font-size: .62rem;
+      font-weight: 700;
       padding: 2px 6px;
       border-radius: 6px;
     }
-    .price-loading { font-size: .75rem; color: var(--muted); font-style: italic; }
-    .price-na { font-size: .75rem; color: var(--muted); }
+    .price-badge.cm  { background: rgba(0,168,107,.2); color: #00a86b; }
+    .price-badge.tcg { background: rgba(255,107,53,.15); color: var(--accent2); }
+    .price-trend {
+      font-size: .68rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .price-na { font-size: .75rem; color: var(--muted); margin-top: 8px; display:block; }
+
+    /* botones Cardmarket */
+    .cm-buttons {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .btn-cm {
+      flex: 1;
+      text-align: center;
+      font-size: .68rem;
+      font-weight: 700;
+      font-family: 'Nunito', sans-serif;
+      padding: 5px 4px;
+      border-radius: 7px;
+      text-decoration: none;
+      background: rgba(0,168,107,.15);
+      color: #00d68f;
+      border: 1px solid rgba(0,168,107,.25);
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    .btn-cm:hover { background: rgba(0,168,107,.3); }
+    .btn-cm.btn-graded {
+      background: rgba(255,232,77,.1);
+      color: var(--accent);
+      border-color: rgba(255,232,77,.2);
+    }
+    .btn-cm.btn-graded:hover { background: rgba(255,232,77,.2); }
 
     /* tipo rarity colors */
     .r-common    { color: #9e9e9e; }
@@ -907,33 +947,45 @@ function filterCards() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PRECIO (desde datos de pokemontcg.io)
-   La API devuelve precios de TCGPlayer y Cardmarket integrados
+   PRECIO — Cardmarket (€) prioritario, TCGPlayer fallback
    ══════════════════════════════════════════════════════════════ */
-function getCardPrice(card) {
-  // Cardmarket (EUR) — prioritario para ES
+function getCMPrices(card) {
   const cm = card.cardmarket?.prices;
-  if (cm) {
-    return cm.averageSellPrice ?? cm.trendPrice ?? cm.avg1 ?? null;
-  }
-  // TCGPlayer (USD) como fallback
+  if (!cm) return null;
+  return {
+    avg:   cm.averageSellPrice ?? cm.avg1 ?? null,
+    trend: cm.trendPrice       ?? null,
+    low:   cm.lowPrice         ?? null,
+  };
+}
+
+function getTCGPrice(card) {
   const tcp = card.tcgplayer?.prices;
-  if (tcp) {
-    const variant = tcp.normal ?? tcp.holofoil ?? tcp.reverseHolofoil ?? Object.values(tcp)[0];
-    return variant?.market ?? variant?.mid ?? null;
-  }
-  return null;
+  if (!tcp) return null;
+  const variant = tcp.normal ?? tcp.holofoil ?? tcp.reverseHolofoil ?? Object.values(tcp)[0];
+  return variant?.market ?? variant?.mid ?? null;
 }
 
-function getPriceSource(card) {
-  if (card.cardmarket?.prices) return 'CardMarket €';
-  if (card.tcgplayer?.prices) return 'TCGPlayer $';
-  return null;
+function getCardPrice(card) {
+  const cm = getCMPrices(card);
+  if (cm?.avg != null) return cm.avg;
+  return getTCGPrice(card);
 }
 
-function getPriceCurrency(card) {
-  if (card.cardmarket?.prices) return '€';
-  return '$';
+/* Genera URL de búsqueda en Cardmarket para la carta */
+function getCardmarketUrl(card) {
+  // Cardmarket España — búsqueda por nombre de carta
+  const name = encodeURIComponent(card.name);
+  // Si la carta tiene URL directa de la API, úsala
+  if (card.cardmarket?.url) return card.cardmarket.url;
+  // Fallback: búsqueda general en Cardmarket
+  return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${name}`;
+}
+
+/* Genera URL de búsqueda de cartas GRADEADAS en Cardmarket */
+function getGradedUrl(card) {
+  const name = encodeURIComponent(card.name);
+  return `https://www.cardmarket.com/es/Pokemon/Products/Search?searchString=${name}+PSA`;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -953,11 +1005,38 @@ function renderCards() {
   }
 
   document.getElementById('cardsGrid').innerHTML = slice.map(card => {
-    const price = getCardPrice(card);
-    const source = getPriceSource(card);
-    const currency = getPriceCurrency(card);
+    const cm       = getCMPrices(card);
+    const tcgPrice = getTCGPrice(card);
     const rarityClass = getRarityClass(card.rarity);
-    const imgUrl = card.images?.small;
+    const imgUrl   = card.images?.small;
+    const cmUrl    = getCardmarketUrl(card);
+    const gradedUrl = getGradedUrl(card);
+
+    // bloque de precios
+    let priceBlock = '';
+    if (cm) {
+      priceBlock = `
+        <div class="price-section">
+          <div class="price-label">Sin gradear</div>
+          <div class="price-row">
+            <span class="price-tag">€${cm.avg != null ? cm.avg.toFixed(2) : '—'}</span>
+            <span class="price-badge cm">CardMarket</span>
+          </div>
+          ${cm.trend != null ? `<div class="price-trend">Tendencia: €${cm.trend.toFixed(2)}</div>` : ''}
+          ${cm.low   != null ? `<div class="price-trend">Mínimo: €${cm.low.toFixed(2)}</div>` : ''}
+        </div>`;
+    } else if (tcgPrice) {
+      priceBlock = `
+        <div class="price-section">
+          <div class="price-label">Sin gradear</div>
+          <div class="price-row">
+            <span class="price-tag">$${tcgPrice.toFixed(2)}</span>
+            <span class="price-badge tcg">TCGPlayer</span>
+          </div>
+        </div>`;
+    } else {
+      priceBlock = `<div class="price-section"><span class="price-na">Sin precio disponible</span></div>`;
+    }
 
     return `
     <div class="card-item">
@@ -972,12 +1051,14 @@ function renderCards() {
         <div class="card-num">#${card.number ?? '—'} · ${card.supertype ?? ''}</div>
         <div class="card-name" title="${card.name}">${card.name}</div>
         <div class="card-rarity ${rarityClass}">${card.rarity ?? '—'}</div>
-        <div class="price-row">
-          ${price !== null
-            ? `<span class="price-tag">${currency}${price.toFixed(2)}</span>
-               <span class="price-source">${source}</span>`
-            : `<span class="price-na">Sin precio</span>`
-          }
+        ${priceBlock}
+        <div class="cm-buttons">
+          <a class="btn-cm" href="${cmUrl}" target="_blank" rel="noopener">
+            🏷️ Sin gradear
+          </a>
+          <a class="btn-cm btn-graded" href="${gradedUrl}" target="_blank" rel="noopener">
+            🏆 Gradeada
+          </a>
         </div>
       </div>
     </div>`;
