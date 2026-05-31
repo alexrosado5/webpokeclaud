@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pokémon TCG — Colecciones</title>
+  <title>PokeClaud · PriceCards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet" />
@@ -563,7 +563,7 @@
 
 <!-- HEADER -->
 <header>
-  <h1>&#x25CF; Pokémon TCG</h1>
+  <h1>&#x25CF; PokeClaud PriceCards</h1>
   <p>Todas las colecciones · Precios en tiempo real</p>
 </header>
 
@@ -1123,11 +1123,8 @@ function renderCards() {
         <div class="card-rarity ${rarityClass}">${card.rarity ?? '—'}</div>
         ${priceBlock}
         <div class="cm-buttons">
-          <a class="btn-cm" href="${cmUrl}" target="_blank" rel="noopener" title="Ver precio sin gradear en Cardmarket">
-            🏷️ Cardmarket
-          </a>
-          <a class="btn-cm btn-graded" href="${gradedUrl}" target="_blank" rel="noopener" title="Ver precios gradeados en PriceCharting">
-            🏆 Gradeada
+          <a class="btn-cm btn-graded" href="${gradedUrl}" target="_blank" rel="noopener" title="Ver precio de mercado en PriceCharting">
+            📊 Precio de Mercado
           </a>
         </div>
       </div>
