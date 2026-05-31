@@ -739,6 +739,16 @@ async function pkmnFetch(path, params = {}) {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   COLECCIONES DISPONIBLES — solo las que vendemos
+   ══════════════════════════════════════════════════════════════ */
+const NUESTRAS_COLECCIONES = {
+  'me2':    { nombre: 'Fuegos Fantasmales',   ingles: 'Phantasmal Flames' },
+  'me2pt5': { nombre: 'Héroes Ascendentes',   ingles: 'Ascended Heroes'   },
+  'me3':    { nombre: 'Equilibrio Perfecto',   ingles: 'Perfect Order'     },
+  'me4':    { nombre: 'Caos Creciente',        ingles: 'Chaos Rising'      },
+};
+
+/* ══════════════════════════════════════════════════════════════
    CARGAR SETS
    ══════════════════════════════════════════════════════════════ */
 async function loadSets() {
@@ -746,7 +756,16 @@ async function loadSets() {
     <div class="loader"><div class="spinner"></div>Cargando colecciones…</div>`;
   try {
     const data = await pkmnFetch('/sets', { pageSize: 250, orderBy: '-releaseDate' });
-    allSets = data.data;
+
+    // Filtrar SOLO nuestras colecciones y añadir nombre en español
+    allSets = data.data
+      .filter(s => NUESTRAS_COLECCIONES[s.id])
+      .map(s => ({
+        ...s,
+        nombreES: NUESTRAS_COLECCIONES[s.id].nombre,
+      }))
+      // ordenar por fecha descendente
+      .sort((a, b) => (b.releaseDate || '').localeCompare(a.releaseDate || ''));
 
     // stats
     document.getElementById('statSets').textContent = allSets.length;
@@ -754,11 +773,8 @@ async function loadSets() {
       allSets.reduce((s, x) => s + x.total, 0).toLocaleString();
     document.getElementById('apiStatusDot').textContent = '🟢';
 
-    // series filter
-    const series = [...new Set(allSets.map(s => s.series))].sort();
-    const sel = document.getElementById('filterSeries');
-    sel.innerHTML = '<option value="">Todas las series</option>' +
-      series.map(s => `<option value="${s}">${s}</option>`).join('');
+    // ocultar filtro de series (no hace falta con 4 colecciones)
+    document.getElementById('filterSeries').style.display = 'none';
 
     renderSets(allSets);
   } catch (e) {
@@ -788,8 +804,8 @@ function renderSets(sets) {
       </div>
       <div class="set-card-body">
         <div class="set-info">
-          <div class="set-name">${s.name}</div>
-          <div class="set-series">${s.series}</div>
+          <div class="set-name">${s.nombreES || s.name}</div>
+          <div class="set-series">${s.name} · ${s.series}</div>
         </div>
         <div class="set-meta" style="margin-top:10px">
           <span><strong>${s.total}</strong> cartas</span>
@@ -856,8 +872,8 @@ async function openSet(setId) {
   document.getElementById('modalHeader').innerHTML = `
     ${currentSet.images?.logo ? `<img class="modal-logo" src="${currentSet.images.logo}" alt="${currentSet.name}" />` : ''}
     <div>
-      <div class="modal-title">${currentSet.name}</div>
-      <div class="modal-sub">${currentSet.series} · ${currentSet.total} cartas · ${formatDate(currentSet.releaseDate)}</div>
+      <div class="modal-title">${currentSet.nombreES || currentSet.name}</div>
+      <div class="modal-sub">${currentSet.name} · ${currentSet.series} · ${currentSet.total} cartas · ${formatDate(currentSet.releaseDate)}</div>
     </div>
     <button class="btn-close" onclick="closeModalBtn()">✕</button>`;
 
