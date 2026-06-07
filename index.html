@@ -431,63 +431,6 @@
     .r-hyper     { color: #f06292; }
     .r-promo     { color: var(--accent); }
 
-    /* ── API KEY MODAL ────────────────────────────────────────── */
-    .key-modal-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.9);
-      z-index: 2000;
-      backdrop-filter: blur(6px);
-      align-items: center;
-      justify-content: center;
-    }
-    .key-modal-overlay.open { display: flex; }
-    .key-modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 36px;
-      max-width: 480px;
-      width: 90%;
-    }
-    .key-modal h3 { font-family: 'Bangers', cursive; font-size: 1.8rem; color: var(--accent); letter-spacing: 2px; margin-bottom: 12px; }
-    .key-modal p { color: var(--muted); font-size: .9rem; margin-bottom: 20px; line-height: 1.6; }
-    .key-modal input {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 16px;
-      color: var(--text);
-      font-family: 'Nunito', sans-serif;
-      font-size: .9rem;
-      outline: none;
-      margin-bottom: 14px;
-    }
-    .key-modal input:focus { border-color: var(--accent); }
-    .key-modal-actions { display: flex; gap: 10px; }
-    .btn-save {
-      flex: 1;
-      background: var(--accent);
-      color: #0d0f1a;
-      border: none;
-      border-radius: 10px;
-      padding: 12px;
-      font-family: 'Nunito', sans-serif;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .btn-cancel {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-family: 'Nunito', sans-serif;
-      cursor: pointer;
-    }
-    .key-modal a { color: var(--accent); }
-
     /* ── TOAST ────────────────────────────────────────────────── */
     .toast {
       position: fixed;
@@ -818,7 +761,7 @@
 
     @media (max-width: 600px) {
       header { padding-top: 52px; }
-      .btn-shop, .btn-key { width: 100%; max-width: 280px; }
+      .btn-shop { width: 100%; max-width: 280px; }
       .controls { gap: 10px; }
       .search-wrap { min-width: 100%; }
     }
@@ -836,7 +779,6 @@
   <p>Todas las colecciones · Precios orientativos en tiempo real para coleccionistas</p>
   <div class="hero-actions">
     <a class="btn-shop" href="https://www.pokeclaudtcg.com" target="_blank" rel="noopener">Ir a PokeClaud TCG</a>
-    <button class="btn-key" type="button" onclick="openKeyModal()">Configurar API key</button>
   </div>
 </header>
 
@@ -905,31 +847,6 @@
   </div>
 </div>
 
-<!-- ═══════════ MODAL API KEY ═══════════ -->
-<div class="key-modal-overlay" id="keyModalOverlay">
-  <div class="key-modal">
-    <h3>🔑 Configurar API Keys</h3>
-    <p>
-      Para mostrar precios reales necesitas registrarte gratis en
-      <a href="https://dev.pokemontcg.io" target="_blank">dev.pokemontcg.io</a>
-      y/o en <a href="https://app.pokemontcg.io" target="_blank">app.pokemontcg.io</a>.
-      La API de cartas e imágenes es gratuita sin key (límite reducido).
-      Para precios de mercado, ver sección de recursos abajo.
-    </p>
-    <label style="display:block;font-size:.85rem;margin-bottom:6px;color:var(--muted)">pokemontcg.io API Key (imágenes/datos)</label>
-    <input id="inputPokemonKey" type="text" placeholder="Pega tu API key aquí (opcional)" />
-    <label style="display:block;font-size:.85rem;margin-bottom:6px;color:var(--muted)">TCGPlayer / CardMarket Price Key (ver README)</label>
-    <input id="inputPriceKey" type="text" placeholder="API key de precios (ver instrucciones abajo)" />
-    <div class="key-modal-actions">
-      <button class="btn-save" onclick="saveKeys()">Guardar</button>
-      <button class="btn-cancel" onclick="closeKeyModal()">Cancelar</button>
-    </div>
-    <p style="margin-top:16px;font-size:.78rem;">
-      Las keys se guardan solo en tu navegador (localStorage). Nunca salen de tu dispositivo.
-    </p>
-  </div>
-</div>
-
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -958,25 +875,9 @@ let filteredCards = [];
 let currentPage = 1;
 let currentSet = null;
 
-const PKMN_API_KEY = ''; // No hardcodees API keys en GitHub. Opcional: guardar una key desde el modal.
-
 function getKey(k) {
-  if (k === 'pkmnKey') return PKMN_API_KEY;
-  return localStorage.getItem(k) || '';
+  return '';
 }
-function saveKeys() {
-  localStorage.setItem('pkmnKey', document.getElementById('inputPokemonKey').value.trim());
-  localStorage.setItem('priceKey', document.getElementById('inputPriceKey').value.trim());
-  closeKeyModal();
-  showToast('✅ Keys guardadas');
-  loadSets();
-}
-function openKeyModal() {
-  document.getElementById('inputPokemonKey').value = getKey('pkmnKey');
-  document.getElementById('inputPriceKey').value = getKey('priceKey');
-  document.getElementById('keyModalOverlay').classList.add('open');
-}
-function closeKeyModal() { document.getElementById('keyModalOverlay').classList.remove('open'); }
 
 function showToast(msg, duration = 3000) {
   const t = document.getElementById('toast');
