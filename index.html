@@ -7,7 +7,7 @@
   <link rel="icon" href="favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <style>
     /* ── RESET & TOKENS ─────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -542,6 +542,287 @@
       .sets-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
       .cards-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
     }
+  
+
+    /* ──────────────────────────────────────────────────────────
+       POKECLAUD TCG THEME OVERRIDE
+       Rosa pastel + verde menta como la tienda Shopify
+       ────────────────────────────────────────────────────────── */
+    :root {
+      --bg: #fff1f7;
+      --surface: rgba(255,255,255,.78);
+      --surface2: rgba(232,250,247,.88);
+      --border: rgba(255,196,223,.82);
+      --accent: #ff5fa8;
+      --accent2: #2b155c;
+      --text: #2b155c;
+      --muted: #6f5d95;
+      --green: #72d7cd;
+      --red: #ff5f8f;
+      --radius: 28px;
+      --shadow: 0 18px 44px rgba(43,21,92,.13);
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 8% 8%, rgba(255,196,223,.70), transparent 28%),
+        radial-gradient(circle at 92% 10%, rgba(216,245,241,.85), transparent 32%),
+        radial-gradient(circle at 85% 88%, rgba(200,180,255,.34), transparent 34%),
+        linear-gradient(135deg, #fff8f4 0%, #fff1f7 48%, #d8f5f1 100%);
+      color: var(--text);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(255,95,168,.18) 0 2px, transparent 2.5px),
+        radial-gradient(circle, rgba(114,215,205,.16) 0 2px, transparent 2.5px);
+      background-size: 54px 54px, 78px 78px;
+      background-position: 10px 18px, 34px 42px;
+      opacity: .48;
+      z-index: -1;
+    }
+
+    header {
+      padding: 74px 20px 44px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,241,247,.38));
+      border-bottom: 1px solid rgba(255,196,223,.72);
+    }
+    header::before {
+      background:
+        radial-gradient(ellipse 70% 55% at 50% 10%, rgba(255,143,199,.28) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 72% 18%, rgba(216,245,241,.70) 0%, transparent 70%);
+    }
+    .pokeball-bg { display: none; }
+
+    header h1 {
+      font-family: 'Fredoka', 'Nunito', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: #fff7fb;
+      text-shadow:
+        2px 2px 0 #2b155c,
+        -2px 2px 0 #2b155c,
+        2px -2px 0 #2b155c,
+        -2px -2px 0 #2b155c,
+        0 5px 0 #ff8fc7,
+        0 10px 24px rgba(43,21,92,.20);
+    }
+    header h1::before {
+      content: "✦";
+      display: inline-block;
+      margin-right: .16em;
+      color: #ff8fc7;
+      text-shadow: 1px 1px 0 #2b155c, 0 0 16px rgba(255,143,199,.52);
+      transform: translateY(-.04em);
+    }
+    header p {
+      color: #3a2a6d;
+      font-weight: 700;
+      max-width: 620px;
+      margin: 14px auto 0;
+    }
+    .hero-actions {
+      position: relative;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 26px;
+    }
+    .btn-shop,
+    .btn-key {
+      appearance: none;
+      border: 2px solid rgba(255,255,255,.92);
+      border-radius: 999px;
+      padding: 12px 22px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 900;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 5px 0 #2b155c, 0 16px 28px rgba(43,21,92,.18);
+      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .btn-shop {
+      background: linear-gradient(135deg, #ff8fc7, #c8b4ff 55%, #72d7cd);
+      color: #fff;
+    }
+    .btn-key {
+      background: rgba(255,255,255,.72);
+      color: #2b155c;
+    }
+    .btn-shop:hover,
+    .btn-key:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 7px 0 #2b155c, 0 20px 34px rgba(43,21,92,.22);
+      filter: saturate(1.04);
+    }
+
+    .controls,
+    .stats-bar,
+    .sets-grid {
+      position: relative;
+      z-index: 1;
+    }
+
+    .search-wrap input,
+    select,
+    .stat,
+    .set-card,
+    .card-item,
+    .msg-box,
+    .key-modal,
+    .toast,
+    .btn-close,
+    .pagination button {
+      background: rgba(255,255,255,.78);
+      border: 1px solid rgba(255,196,223,.78);
+      color: #2b155c;
+      box-shadow: 0 10px 30px rgba(43,21,92,.08);
+      backdrop-filter: blur(10px);
+    }
+    .search-wrap input::placeholder { color: #8b78ad; }
+    .search-wrap input:focus,
+    select:focus,
+    .key-modal input:focus {
+      border-color: #ff8fc7;
+      box-shadow: 0 0 0 4px rgba(255,143,199,.18);
+    }
+
+    .stat strong,
+    .price-tag,
+    .key-modal h3,
+    .modal-title {
+      color: #ff5fa8;
+    }
+
+    .set-card {
+      overflow: hidden;
+      border-radius: 26px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.88) 0%, rgba(255,241,247,.84) 52%, rgba(232,250,247,.84) 100%);
+    }
+    .set-card::after,
+    .card-item::after {
+      content: "✦";
+      position: absolute;
+      right: 16px;
+      bottom: 12px;
+      color: rgba(255,95,168,.32);
+      font-size: 20px;
+      pointer-events: none;
+    }
+    .set-card:hover,
+    .card-item:hover {
+      border-color: rgba(255,143,199,.95);
+      box-shadow: 0 20px 48px rgba(43,21,92,.16), 0 0 22px rgba(114,215,205,.24);
+    }
+    .set-card-header,
+    .card-img-wrap {
+      background:
+        linear-gradient(145deg, #fff8f4 0%, #fff1f7 45%, #d8f5f1 100%);
+      border-bottom: 1px solid rgba(255,196,223,.72);
+    }
+    .set-logo,
+    .set-symbol,
+    .card-img-wrap img {
+      filter: drop-shadow(0 12px 18px rgba(43,21,92,.16));
+    }
+    .set-name,
+    .card-name,
+    .msg-box h3 {
+      color: #2b155c;
+    }
+    .set-series,
+    .set-date,
+    .set-meta,
+    .card-num,
+    .card-rarity,
+    .price-label,
+    .price-trend,
+    .price-na,
+    footer {
+      color: #6f5d95;
+    }
+    .set-meta span strong { color: #2b155c; }
+
+    .badge,
+    .price-badge.cm,
+    .btn-cm {
+      background: rgba(114,215,205,.22);
+      color: #297f78;
+      border: 1px solid rgba(114,215,205,.34);
+    }
+    .price-badge.tcg,
+    .btn-cm.btn-graded {
+      background: rgba(255,143,199,.18);
+      color: #ff5fa8;
+      border-color: rgba(255,143,199,.32);
+    }
+    .btn-cm:hover,
+    .btn-cm.btn-graded:hover {
+      background: rgba(255,143,199,.28);
+    }
+
+    .modal-overlay,
+    .key-modal-overlay {
+      background: rgba(255,241,247,.78);
+      backdrop-filter: blur(12px);
+    }
+    .modal-header {
+      border-bottom: 1px solid rgba(255,196,223,.78);
+    }
+    .modal-sub { color: #6f5d95; }
+    .key-modal input {
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(255,196,223,.78);
+      color: #2b155c;
+    }
+    .btn-save {
+      background: linear-gradient(135deg, #ff8fc7, #72d7cd);
+      color: #fff;
+      box-shadow: 0 5px 0 #2b155c;
+    }
+    .btn-cancel {
+      background: rgba(255,255,255,.78);
+      border-color: rgba(255,196,223,.78);
+      color: #2b155c;
+    }
+
+    .spinner {
+      border-color: rgba(255,196,223,.62);
+      border-top-color: #ff5fa8;
+    }
+    .pagination button.active,
+    .pagination button:hover {
+      background: #ff8fc7;
+      color: #fff;
+    }
+    footer {
+      border-top: 1px solid rgba(255,196,223,.78);
+      background: rgba(255,255,255,.44);
+    }
+    footer a,
+    .key-modal a {
+      color: #ff5fa8;
+      font-weight: 800;
+    }
+    .footer-shop {
+      display: inline-block;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 600px) {
+      header { padding-top: 52px; }
+      .btn-shop, .btn-key { width: 100%; max-width: 280px; }
+      .controls { gap: 10px; }
+      .search-wrap { min-width: 100%; }
+    }
+
   </style>
 </head>
 <body>
@@ -552,7 +833,11 @@
 <!-- HEADER -->
 <header>
   <h1>&#x25CF; PokeClaud PriceCards</h1>
-  <p>Todas las colecciones · Precios en tiempo real</p>
+  <p>Todas las colecciones · Precios orientativos en tiempo real para coleccionistas</p>
+  <div class="hero-actions">
+    <a class="btn-shop" href="https://www.pokeclaudtcg.com" target="_blank" rel="noopener">Ir a PokeClaud TCG</a>
+    <button class="btn-key" type="button" onclick="openKeyModal()">Configurar API key</button>
+  </div>
 </header>
 
 <!-- CONTROLES PRINCIPALES -->
@@ -653,7 +938,8 @@
   Datos: <a href="https://pokemontcg.io" target="_blank">pokemontcg.io</a> ·
   Precios: <a href="https://tcgplayer.com" target="_blank">TCGPlayer</a> /
   <a href="https://cardmarket.com" target="_blank">CardMarket</a> ·
-  Imágenes © The Pokémon Company
+  Imágenes © The Pokémon Company<br />
+  <a class="footer-shop" href="https://www.pokeclaudtcg.com" target="_blank" rel="noopener">Volver a la tienda PokeClaud TCG</a>
 </footer>
 
 <script>
@@ -672,7 +958,7 @@ let filteredCards = [];
 let currentPage = 1;
 let currentSet = null;
 
-const PKMN_API_KEY = '8fdde067-1436-4e05-946a-5bbb105ae223';
+const PKMN_API_KEY = ''; // No hardcodees API keys en GitHub. Opcional: guardar una key desde el modal.
 
 function getKey(k) {
   if (k === 'pkmnKey') return PKMN_API_KEY;
