@@ -842,7 +842,8 @@
         <option value="price-asc">Precio ↑</option>
       </select>
       <select id="filterVariants" onchange="filterCards()">
-        <option value="all">Todas las variantes oficiales</option>
+        <option value="all">Cartas oficiales</option>
+        <option value="master">Master set: Normal/Holo/Reverse</option>
         <option value="one-name">Una carta por nombre</option>
       </select>
     </div>
@@ -1039,6 +1040,49 @@ function uniqueByCardName(cards) {
   });
 }
 
+function hasAnyValue(obj, keys) {
+  return !!obj && keys.some(k => obj[k] != null);
+}
+
+function getAvailableVariants(card) {
+  const tcp = card.tcgplayer?.prices || {};
+  const cm  = card.cardmarket?.prices || {};
+  const variants = [];
+
+  const addVariant = (key, label) => {
+    if (!variants.some(v => v.key === key)) variants.push({ key, label });
+  };
+
+  // TCGPlayer separa normal / holofoil / reverseHolofoil. CardMarket separa no foil y reverse.
+  if (tcp.normal || hasAnyValue(cm, ['averageSellPrice', 'lowPrice', 'trendPrice'])) {
+    addVariant('normal', 'Normal');
+  }
+  if (tcp.holofoil) {
+    addVariant('holofoil', 'Holo');
+  }
+  if (tcp.reverseHolofoil || hasAnyValue(cm, ['reverseHoloSell', 'reverseHoloLow', 'reverseHoloTrend'])) {
+    addVariant('reverseHolofoil', 'Reverse Holo');
+  }
+
+  // Si no hay precios por variante, al menos mostramos la carta base para no esconder nada.
+  if (!variants.length) addVariant('base', 'Base');
+  return variants;
+}
+
+function expandCardsToMasterSet(cards) {
+  return cards.flatMap(card =>
+    getAvailableVariants(card).map(variant => ({
+      ...card,
+      _variant: variant,
+      _displayId: `${card.id || card.number}-${variant.key}`,
+    }))
+  );
+}
+
+function getVariantLabel(card) {
+  return card._variant?.label || '';
+}
+
 function getRepeatedNames(cards) {
   const counts = new Map();
   for (const c of cards) {
@@ -1136,16 +1180,28 @@ function filterCards() {
   const sort = document.getElementById('sortCards').value;
   const variantMode = document.getElementById('filterVariants').value;
 
-  filteredCards = currentCards.filter(c =>
+  let baseCards = currentCards.filter(c =>
     (!q || c.name.toLowerCase().includes(q) || (c.number||'').includes(q)) &&
     (!rarity || c.rarity === rarity)
   );
 
+  // Modo master set: una entrada por variante física disponible: Normal, Holo y Reverse Holo.
+  if (variantMode === 'master') {
+    filteredCards = expandCardsToMasterSet(baseCards);
+  } else if (variantMode === 'one-name') {
+    filteredCards = uniqueByCardName(baseCards);
+  } else {
+    filteredCards = baseCards;
+  }
+
   const [field, dir] = sort.split('-');
   filteredCards.sort((a, b) => {
-    if (field === 'number') return compareCardNumber(a, b, dir);
+    if (field === 'number') {
+      const result = compareCardNumber(a, b, 'asc') || (a._variant?.key || '').localeCompare(b._variant?.key || '');
+      return dir === 'asc' ? result : -result;
+    }
     if (field === 'name') {
-      const result = a.name.localeCompare(b.name) || compareCardNumber(a, b, 'asc');
+      const result = a.name.localeCompare(b.name) || compareCardNumber(a, b, 'asc') || (a._variant?.key || '').localeCompare(b._variant?.key || '');
       return dir === 'asc' ? result : -result;
     }
     if (field === 'price') {
@@ -1156,11 +1212,6 @@ function filterCards() {
     return 0;
   });
 
-  // Esto NO borra cartas de la API: solo cambia la vista para evitar ver varias variantes con el mismo nombre.
-  if (variantMode === 'one-name') {
-    filteredCards = uniqueByCardName(filteredCards);
-  }
-
   currentPage = 1;
   renderCards();
 }
@@ -1168,17 +1219,29 @@ function filterCards() {
 function getCMPrices(card) {
   const cm = card.cardmarket?.prices;
   if (!cm) return null;
+
+  if (card._variant?.key === 'reverseHolofoil') {
+    return {
+      avg:   cm.reverseHoloSell  ?? null,
+      trend: cm.reverseHoloTrend ?? null,
+      low:   cm.reverseHoloLow   ?? null,
+      label: 'Reverse Holo',
+    };
+  }
+
   return {
     avg:   cm.averageSellPrice ?? cm.avg1 ?? null,
     trend: cm.trendPrice       ?? null,
     low:   cm.lowPrice         ?? null,
+    label: card._variant?.label || 'Sin gradear',
   };
 }
 
 function getTCGPrice(card) {
   const tcp = card.tcgplayer?.prices;
   if (!tcp) return null;
-  const variant = tcp.normal ?? tcp.holofoil ?? tcp.reverseHolofoil ?? Object.values(tcp)[0];
+  const key = card._variant?.key;
+  const variant = key && tcp[key] ? tcp[key] : (tcp.normal ?? tcp.holofoil ?? tcp.reverseHolofoil ?? Object.values(tcp)[0]);
   return variant?.market ?? variant?.mid ?? null;
 }
 
@@ -1243,6 +1306,15 @@ function renderCards() {
   const total = filteredCards.length;
   const pages = Math.ceil(total / perPage);
   const slice = filteredCards.slice((currentPage-1)*perPage, currentPage*perPage);
+  const variantMode = document.getElementById('filterVariants')?.value;
+  if (currentSet && document.getElementById('modalSubInfo')) {
+    const baseCount = currentCards.length;
+    const label = variantMode === 'master'
+      ? `${total} entradas de master set desde ${baseCount} cartas oficiales`
+      : `${total} cartas visibles de ${baseCount} oficiales`;
+    document.getElementById('modalSubInfo').textContent =
+      `${currentSet.name} · ${currentSet.series} · ${label} · ${formatDate(currentSet.releaseDate)}`;
+  }
 
   if (!slice.length) {
     document.getElementById('cardsGrid').innerHTML =
@@ -1257,12 +1329,13 @@ function renderCards() {
     const rarityClass = getRarityClass(card.rarity);
     const imgUrl    = card.images?.small;
     const gradedUrl = getGradedUrl(card);
+    const variantLabel = getVariantLabel(card);
 
     let priceBlock = '';
-    if (cm) {
+    if (cm && (cm.avg != null || cm.trend != null || cm.low != null)) {
       priceBlock = `
         <div class="price-section">
-          <div class="price-label">Sin gradear</div>
+          <div class="price-label">${cm.label || 'Sin gradear'}</div>
           <div class="price-row">
             <span class="price-tag">€${cm.avg != null ? cm.avg.toFixed(2) : '—'}</span>
             <span class="price-badge cm">CardMarket</span>
@@ -1273,14 +1346,14 @@ function renderCards() {
     } else if (tcgPrice) {
       priceBlock = `
         <div class="price-section">
-          <div class="price-label">Sin gradear</div>
+          <div class="price-label">${variantLabel || 'Sin gradear'}</div>
           <div class="price-row">
             <span class="price-tag">$${tcgPrice.toFixed(2)}</span>
             <span class="price-badge tcg">TCGPlayer</span>
           </div>
         </div>`;
     } else {
-      priceBlock = `<div class="price-section"><span class="price-na">Sin precio disponible</span></div>`;
+      priceBlock = `<div class="price-section"><span class="price-na">Sin precio disponible${variantLabel ? ` (${variantLabel})` : ''}</span></div>`;
     }
 
     return `
@@ -1293,8 +1366,8 @@ function renderCards() {
         }
       </div>
       <div class="card-body">
-        <div class="card-num">#${card.number ?? '—'} · ${card.supertype ?? ''}</div>
-        <div class="card-name" title="${card.name}">${card.name}</div>
+        <div class="card-num">#${card.number ?? '—'} · ${card.supertype ?? ''}${variantLabel ? ` · ${variantLabel}` : ''}</div>
+        <div class="card-name" title="${card.name}${variantLabel ? ' · ' + variantLabel : ''}">${card.name}${variantLabel ? ` · ${variantLabel}` : ''}</div>
         <div class="card-rarity ${rarityClass}">${card.rarity ?? '—'}</div>
         ${priceBlock}
         <div class="cm-buttons">
