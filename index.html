@@ -992,21 +992,37 @@ function findMissingCardNumbers(cards, expectedTotal) {
 }
 
 const NUESTRAS_COLECCIONES = {
-  'me1':    { nombre: 'Mega Evolución',        ingles: 'Mega Evolution'      },
-  'me2':    { nombre: 'Fuegos Fantasmales',   ingles: 'Phantasmal Flames' },
-  'me2pt5': { nombre: 'Héroes Ascendentes',   ingles: 'Ascended Heroes'   },
-  'me3':    { nombre: 'Equilibrio Perfecto',   ingles: 'Perfect Order'     },
-  'me4':    { nombre: 'Caos Creciente',        ingles: 'Chaos Rising'      },
+  // Mega Evolution
+  'me1':      { nombre: 'Mega Evolución',        ingles: 'Mega Evolution'      },
+  'me2':      { nombre: 'Fuegos Fantasmales',    ingles: 'Phantasmal Flames'   },
+  'me2pt5':   { nombre: 'Héroes Ascendentes',    ingles: 'Ascended Heroes'     },
+  'me3':      { nombre: 'Equilibrio Perfecto',   ingles: 'Perfect Order'       },
+  'me4':      { nombre: 'Caos Creciente',        ingles: 'Chaos Rising'        },
+
+  // Nuevas colecciones pedidas
+  'sv3pt5':   { nombre: '151',                   ingles: '151'                 },
+  'sv10':     { nombre: 'Team Rocket / Rivales Predestinados', ingles: 'Destined Rivals' },
+  'zsv10pt5': { nombre: 'Zekrom / Black Bolt',   ingles: 'Black Bolt'          },
+  'rsv10pt5': { nombre: 'Reshiram / White Flare', ingles: 'White Flare'         },
 };
+
+// Colecciones externas desactivadas.
+const COLECCIONES_EXTERNAS = [];
 
 async function loadSets() {
   document.getElementById('setsGrid').innerHTML = `
     <div class="loader"><div class="spinner"></div>Cargando colecciones…</div>`;
   try {
     const data = await pkmnFetch('/sets', { pageSize: 250, orderBy: '-releaseDate' });
-    allSets = data.data
+    const apiSets = data.data
       .filter(s => NUESTRAS_COLECCIONES[s.id])
-      .map(s => ({ ...s, nombreES: NUESTRAS_COLECCIONES[s.id].nombre }))
+      .map(s => ({
+        ...s,
+        nombreES: NUESTRAS_COLECCIONES[s.id].nombre,
+        ingles: NUESTRAS_COLECCIONES[s.id].ingles,
+      }));
+
+    allSets = [...apiSets, ...COLECCIONES_EXTERNAS]
       .sort((a, b) => (b.releaseDate || '').localeCompare(a.releaseDate || ''));
 
     document.getElementById('statSets').textContent = allSets.length;
@@ -1068,10 +1084,10 @@ function applySetFilters() {
   const q = document.getElementById('searchSets').value.toLowerCase();
   const series = document.getElementById('filterSeries').value;
   const sort = document.getElementById('sortSets').value;
-  let filtered = allSets.filter(s =>
-    (!q || s.name.toLowerCase().includes(q) || s.series.toLowerCase().includes(q)) &&
-    (!series || s.series === series)
-  );
+  let filtered = allSets.filter(s => {
+    const haystack = [s.name, s.nombreES, s.ingles, s.series, s.id].filter(Boolean).join(' ').toLowerCase();
+    return (!q || haystack.includes(q)) && (!series || s.series === series);
+  });
   const [field, dir] = sort.split('-');
   filtered.sort((a, b) => {
     let av = a[field], bv = b[field];
@@ -1363,16 +1379,26 @@ function getCardmarketUrl(card) {
     return card.cardmarket.url.replace('cardmarket.com/en/', 'cardmarket.com/es/');
   }
   const CM_SET_SLUGS = {
-    'me2':    'Phantasmal-Flames',
-    'me2pt5': 'Ascended-Heroes',
-    'me3':    'Perfect-Order',
-    'me4':    'Chaos-Rising',
+    'me1':      'Mega-Evolution',
+    'me2':      'Phantasmal-Flames',
+    'me2pt5':   'Ascended-Heroes',
+    'me3':      'Perfect-Order',
+    'me4':      'Chaos-Rising',
+    'sv3pt5':   '151',
+    'sv10':     'Destined-Rivals',
+    'zsv10pt5': 'Black-Bolt',
+    'rsv10pt5': 'White-Flare',
   };
   const CM_CODES = {
-    'me2':    'PFL',
-    'me2pt5': 'ASC',
-    'me3':    'POR',
-    'me4':    'CRI',
+    'me1':      'MEG',
+    'me2':      'PFL',
+    'me2pt5':   'ASC',
+    'me3':      'POR',
+    'me4':      'CRI',
+    'sv3pt5':   'MEW',
+    'sv10':     'DRI',
+    'zsv10pt5': 'BLK',
+    'rsv10pt5': 'WHT',
   };
   const setSlug = CM_SET_SLUGS[card.set?.id];
   const code    = CM_CODES[card.set?.id] || '';
@@ -1389,10 +1415,15 @@ function getCardmarketUrl(card) {
 
 function getGradedUrl(card) {
   const PC_SLUGS = {
-    'me2':    'pokemon-phantasmal-flames',
-    'me2pt5': 'pokemon-ascended-heroes',
-    'me3':    'pokemon-perfect-order',
-    'me4':    'pokemon-chaos-rising',
+    'me1':      'pokemon-mega-evolution',
+    'me2':      'pokemon-phantasmal-flames',
+    'me2pt5':   'pokemon-ascended-heroes',
+    'me3':      'pokemon-perfect-order',
+    'me4':      'pokemon-chaos-rising',
+    'sv3pt5':   'pokemon-scarlet-%26-violet-151',
+    'sv10':     'pokemon-destined-rivals',
+    'zsv10pt5': 'pokemon-black-bolt',
+    'rsv10pt5': 'pokemon-white-flare',
   };
   const setSlug  = PC_SLUGS[card.set?.id];
   const nameSlug = card.name
