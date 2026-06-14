@@ -902,6 +902,87 @@ async function pkmnFetch(path, params = {}) {
   return res.json();
 }
 
+
+const GITHUB_CARD_DATA_BASE = 'https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master/cards/en';
+
+async function fetchCardsFromApi(setId, onProgress = () => {}) {
+  let page = 1;
+  let cards = [];
+  let total = null;
+  const pageSize = 250;
+  const maxPages = 20;
+
+  do {
+    const data = await pkmnFetch('/cards', {
+      q: `set.id:${setId}`,
+      pageSize,
+      page,
+      orderBy: 'number',
+    });
+
+    cards = cards.concat(data.data || []);
+    total = data.totalCount ?? cards.length;
+    const loadedUnique = uniqueByCardId(cards).length;
+    onProgress({ source: 'api', loaded: loadedUnique, total });
+
+    // Hay un bug abierto en pokemontcg.io con sets de más de 250 cartas:
+    // algunas páginas posteriores pueden devolver duplicados o dejar huecos.
+    // Por eso luego fusionamos con el JSON oficial del repositorio.
+    if (!data.data || data.data.length < pageSize || loadedUnique >= total) break;
+    page++;
+  } while (page <= maxPages);
+
+  return { cards: uniqueByCardId(cards), total };
+}
+
+async function fetchCardsFromRepo(setId) {
+  const url = `${GITHUB_CARD_DATA_BASE}/${encodeURIComponent(setId)}.json`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`GitHub card data HTTP ${res.status}`);
+  const json = await res.json();
+  return Array.isArray(json) ? json : (json.data || []);
+}
+
+function mergeApiAndRepoCards(apiCards, repoCards) {
+  const byId = new Map();
+
+  // Primero metemos repo: suele estar más completo cuando la API tarda en sincronizar.
+  for (const repoCard of repoCards || []) {
+    byId.set(repoCard.id || `${repoCard.set?.id || ''}-${repoCard.number || ''}-${repoCard.name || ''}`, {
+      ...repoCard,
+      set: repoCard.set || currentSet,
+      _dataSource: 'repo',
+    });
+  }
+
+  // Luego pisamos con API solo lo que tenga datos de precio/enlaces, manteniendo la carta del repo si era más completa.
+  for (const apiCard of apiCards || []) {
+    const key = apiCard.id || `${apiCard.set?.id || ''}-${apiCard.number || ''}-${apiCard.name || ''}`;
+    const repoCard = byId.get(key) || {};
+    byId.set(key, {
+      ...repoCard,
+      ...apiCard,
+      images: apiCard.images || repoCard.images,
+      tcgplayer: apiCard.tcgplayer || repoCard.tcgplayer,
+      cardmarket: apiCard.cardmarket || repoCard.cardmarket,
+      set: apiCard.set || repoCard.set || currentSet,
+      _dataSource: repoCard.id && !apiCard.id ? 'repo' : (repoCard._dataSource === 'repo' ? 'repo+api' : 'api'),
+    });
+  }
+
+  return uniqueByCardId([...byId.values()]).sort((a, b) => compareCardNumber(a, b, 'asc'));
+}
+
+function findMissingCardNumbers(cards, expectedTotal) {
+  const nums = new Set(cards.map(c => parseInt(c.number, 10)).filter(n => Number.isFinite(n)));
+  const max = expectedTotal || Math.max(0, ...nums);
+  const missing = [];
+  for (let i = 1; i <= max; i++) {
+    if (!nums.has(i)) missing.push(i);
+  }
+  return missing;
+}
+
 const NUESTRAS_COLECCIONES = {
   'me1':    { nombre: 'Mega Evolución',        ingles: 'Mega Evolution'      },
   'me2':    { nombre: 'Fuegos Fantasmales',   ingles: 'Phantasmal Flames' },
@@ -1118,33 +1199,51 @@ async function openSet(setId) {
   document.getElementById('pagination').innerHTML = '';
 
   try {
-    let page = 1;
-    let cards = [];
-    let total = null;
-    const pageSize = 250;
-    const maxPages = 20;
+    const updateStatus = msg => {
+      const el = document.getElementById('modalSubInfo');
+      if (el) el.textContent = msg;
+    };
 
-    do {
-      const data = await pkmnFetch('/cards', {
-        q: `set.id:${setId}`,
-        pageSize,
-        page,
-        orderBy: 'number',
-      });
+    updateStatus(`${currentSet.name} · ${currentSet.series} · cargando API… · ${formatDate(currentSet.releaseDate)}`);
 
-      cards = cards.concat(data.data || []);
-      total = data.totalCount ?? cards.length;
+    const apiPromise = fetchCardsFromApi(setId, ({ loaded, total }) => {
+      updateStatus(`${currentSet.name} · ${currentSet.series} · API ${loaded}/${total || '?'} · ${formatDate(currentSet.releaseDate)}`);
+    }).catch(error => {
+      console.warn('[PokeClaud] No se pudo cargar pokemontcg.io, usaré GitHub como respaldo:', error);
+      return { cards: [], total: null, error };
+    });
 
-      const loadedUnique = uniqueByCardId(cards).length;
-      document.getElementById('modalSubInfo').textContent =
-        `${currentSet.name} · ${currentSet.series} · cargadas ${loadedUnique}/${total} cartas · ${formatDate(currentSet.releaseDate)}`;
+    const repoPromise = fetchCardsFromRepo(setId).catch(error => {
+      console.warn('[PokeClaud] No se pudo cargar el JSON de GitHub:', error);
+      return [];
+    });
 
-      // Si la API devuelve menos de una página completa o ya llegamos al total, paramos.
-      if (!data.data || data.data.length < pageSize || loadedUnique >= total) break;
-      page++;
-    } while (page <= maxPages);
+    const [apiResult, repoCards] = await Promise.all([apiPromise, repoPromise]);
+    const apiCards = apiResult.cards || [];
+    const mergedCards = mergeApiAndRepoCards(apiCards, repoCards);
 
-    currentCards = uniqueByCardId(cards);
+    if (!mergedCards.length) {
+      throw new Error('No se han podido cargar cartas ni desde la API ni desde GitHub.');
+    }
+
+    currentCards = mergedCards;
+
+    const expectedTotal = Math.max(currentSet.total || 0, currentCards.length);
+    const missingNumbers = findMissingCardNumbers(currentCards, expectedTotal);
+    const repoExtra = repoCards.length && repoCards.length > apiCards.length ? ` · GitHub +${repoCards.length - apiCards.length}` : '';
+    const missingMsg = missingNumbers.length ? ` · faltan números: ${missingNumbers.slice(0, 12).join(', ')}${missingNumbers.length > 12 ? '…' : ''}` : '';
+
+    updateStatus(
+      `${currentSet.name} · ${currentSet.series} · mostrando ${currentCards.length} cartas` +
+      ` · API ${apiCards.length}${apiResult.total ? '/' + apiResult.total : ''}` +
+      `${repoExtra}${missingMsg} · ${formatDate(currentSet.releaseDate)}`
+    );
+
+    const apiIds = new Set(apiCards.map(c => c.id));
+    const repoOnly = currentCards.filter(c => !apiIds.has(c.id));
+    if (repoOnly.length) {
+      console.info(`[PokeClaud] ${repoOnly.length} cartas añadidas desde GitHub porque no venían en la API:`, repoOnly.map(c => `#${c.number} ${c.name}`));
+    }
 
     const repeatedNames = getRepeatedNames(currentCards);
     if (repeatedNames.length) {
@@ -1332,7 +1431,7 @@ function renderCards() {
     const variantLabel = getVariantLabel(card);
 
     let priceBlock = '';
-    if (cm && (cm.avg != null || cm.trend != null || cm.low != null)) {
+    if (cm) {
       priceBlock = `
         <div class="price-section">
           <div class="price-label">${cm.label || 'Sin gradear'}</div>
@@ -1346,14 +1445,14 @@ function renderCards() {
     } else if (tcgPrice) {
       priceBlock = `
         <div class="price-section">
-          <div class="price-label">${variantLabel || 'Sin gradear'}</div>
+          <div class="price-label">${cm.label || 'Sin gradear'}</div>
           <div class="price-row">
             <span class="price-tag">$${tcgPrice.toFixed(2)}</span>
             <span class="price-badge tcg">TCGPlayer</span>
           </div>
         </div>`;
     } else {
-      priceBlock = `<div class="price-section"><span class="price-na">Sin precio disponible${variantLabel ? ` (${variantLabel})` : ''}</span></div>`;
+      priceBlock = `<div class="price-section"><span class="price-na">Sin precio disponible</span></div>`;
     }
 
     return `
