@@ -906,31 +906,39 @@ async function pkmnFetch(path, params = {}) {
 const GITHUB_CARD_DATA_BASE = 'https://raw.githubusercontent.com/PokemonTCG/pokemon-tcg-data/master/cards/en';
 
 async function fetchCardsFromApi(setId, onProgress = () => {}) {
-  let page = 1;
   let cards = [];
   let total = null;
   const pageSize = 250;
   const maxPages = 20;
 
-  do {
-    const data = await pkmnFetch('/cards', {
-      q: `set.id:${setId}`,
-      pageSize,
-      page,
-      orderBy: 'number',
-    });
+  // IMPORTANTE:
+  // En algunos sets grandes la API/paginación puede dejar huecos cuando se pide solo orderBy:number.
+  // Para no perder precios, cargamos la colección en ambos sentidos y fusionamos por id.
+  // Ejemplo típico: Ascended Heroes puede dejar sin precio cartas de la zona #61-#99 si solo usamos una pasada.
+  const passes = [
+    { orderBy: 'number',  label: 'API número ↑' },
+    { orderBy: '-number', label: 'API número ↓' },
+  ];
 
-    cards = cards.concat(data.data || []);
-    total = data.totalCount ?? cards.length;
-    const loadedUnique = uniqueByCardId(cards).length;
-    onProgress({ source: 'api', loaded: loadedUnique, total });
+  for (const pass of passes) {
+    let page = 1;
+    do {
+      const data = await pkmnFetch('/cards', {
+        q: `set.id:${setId}`,
+        pageSize,
+        page,
+        orderBy: pass.orderBy,
+      });
 
-    // Hay un bug abierto en pokemontcg.io con sets de más de 250 cartas:
-    // algunas páginas posteriores pueden devolver duplicados o dejar huecos.
-    // Por eso luego fusionamos con el JSON oficial del repositorio.
-    if (!data.data || data.data.length < pageSize || loadedUnique >= total) break;
-    page++;
-  } while (page <= maxPages);
+      cards = cards.concat(data.data || []);
+      total = Math.max(total || 0, data.totalCount ?? cards.length);
+      const loadedUnique = uniqueByCardId(cards).length;
+      onProgress({ source: 'api', loaded: loadedUnique, total, label: pass.label });
+
+      if (!data.data || data.data.length < pageSize || loadedUnique >= total) break;
+      page++;
+    } while (page <= maxPages);
+  }
 
   return { cards: uniqueByCardId(cards), total };
 }
@@ -1206,8 +1214,8 @@ async function openSet(setId) {
 
     updateStatus(`${currentSet.name} · ${currentSet.series} · cargando API… · ${formatDate(currentSet.releaseDate)}`);
 
-    const apiPromise = fetchCardsFromApi(setId, ({ loaded, total }) => {
-      updateStatus(`${currentSet.name} · ${currentSet.series} · API ${loaded}/${total || '?'} · ${formatDate(currentSet.releaseDate)}`);
+    const apiPromise = fetchCardsFromApi(setId, ({ loaded, total, label }) => {
+      updateStatus(`${currentSet.name} · ${currentSet.series} · ${label || 'API'} ${loaded}/${total || '?'} · ${formatDate(currentSet.releaseDate)}`);
     }).catch(error => {
       console.warn('[PokeClaud] No se pudo cargar pokemontcg.io, usaré GitHub como respaldo:', error);
       return { cards: [], total: null, error };
@@ -1445,7 +1453,7 @@ function renderCards() {
     } else if (tcgPrice) {
       priceBlock = `
         <div class="price-section">
-          <div class="price-label">${cm.label || 'Sin gradear'}</div>
+          <div class="price-label">${variantLabel || 'Sin gradear'}</div>
           <div class="price-row">
             <span class="price-tag">$${tcgPrice.toFixed(2)}</span>
             <span class="price-badge tcg">TCGPlayer</span>
