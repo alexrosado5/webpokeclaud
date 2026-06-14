@@ -841,6 +841,10 @@
         <option value="price-desc">Precio ↓</option>
         <option value="price-asc">Precio ↑</option>
       </select>
+      <select id="filterVariants" onchange="filterCards()">
+        <option value="all">Todas las variantes oficiales</option>
+        <option value="one-name">Una carta por nombre</option>
+      </select>
     </div>
     <div class="cards-grid" id="cardsGrid"></div>
     <div class="pagination" id="pagination"></div>
@@ -992,12 +996,66 @@ document.getElementById('searchSets').addEventListener('input', applySetFilters)
 document.getElementById('filterSeries').addEventListener('change', applySetFilters);
 document.getElementById('sortSets').addEventListener('change', applySetFilters);
 
+function cardNumberParts(value) {
+  const raw = String(value || '');
+  const m = raw.match(/^(\d+)(.*)$/);
+  if (!m) return { n: Number.MAX_SAFE_INTEGER, suffix: raw.toLowerCase() };
+  return { n: parseInt(m[1], 10), suffix: (m[2] || '').toLowerCase() };
+}
+
+function compareCardNumber(a, b, dir = 'asc') {
+  const av = cardNumberParts(a.number);
+  const bv = cardNumberParts(b.number);
+  const result = (av.n - bv.n) || av.suffix.localeCompare(bv.suffix) || String(a.id).localeCompare(String(b.id));
+  return dir === 'asc' ? result : -result;
+}
+
+function normalizeCardName(name) {
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function uniqueByCardId(cards) {
+  const seen = new Set();
+  return cards.filter(card => {
+    const key = card.id || `${card.set?.id || ''}-${card.number || ''}-${card.name || ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function uniqueByCardName(cards) {
+  const seen = new Set();
+  return cards.filter(card => {
+    const key = normalizeCardName(card.name);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getRepeatedNames(cards) {
+  const counts = new Map();
+  for (const c of cards) {
+    const key = normalizeCardName(c.name);
+    if (!key) continue;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()].filter(([, count]) => count > 1);
+}
+
 async function openSet(setId) {
   currentSet = allSets.find(s => s.id === setId);
   currentPage = 1;
   document.getElementById('searchCards').value = '';
   document.getElementById('filterRarity').value = '';
   document.getElementById('sortCards').value = 'number-asc';
+  document.getElementById('filterVariants').value = 'all';
 
   const overlay = document.getElementById('modalOverlay');
   overlay.classList.add('open');
@@ -1007,7 +1065,7 @@ async function openSet(setId) {
     ${currentSet.images?.logo ? `<img class="modal-logo" src="${currentSet.images.logo}" alt="${currentSet.name}" />` : ''}
     <div>
       <div class="modal-title">${currentSet.nombreES || currentSet.name}</div>
-      <div class="modal-sub">${currentSet.name} · ${currentSet.series} · ${currentSet.total} cartas · ${formatDate(currentSet.releaseDate)}</div>
+      <div class="modal-sub" id="modalSubInfo">${currentSet.name} · ${currentSet.series} · cargando cartas… · ${formatDate(currentSet.releaseDate)}</div>
     </div>
     <button class="btn-close" onclick="closeModalBtn()">✕</button>`;
 
@@ -1018,22 +1076,41 @@ async function openSet(setId) {
   try {
     let page = 1;
     let cards = [];
-    let total = Infinity;
-    while (cards.length < total) {
+    let total = null;
+    const pageSize = 250;
+    const maxPages = 20;
+
+    do {
       const data = await pkmnFetch('/cards', {
         q: `set.id:${setId}`,
-        pageSize: 250,
+        pageSize,
         page,
         orderBy: 'number',
       });
-      cards = cards.concat(data.data);
-      total = data.totalCount;
-      if (data.data.length < 250) break;
-      page++;
-    }
-    currentCards = cards;
 
-    const rarities = [...new Set(cards.map(c => c.rarity).filter(Boolean))].sort();
+      cards = cards.concat(data.data || []);
+      total = data.totalCount ?? cards.length;
+
+      const loadedUnique = uniqueByCardId(cards).length;
+      document.getElementById('modalSubInfo').textContent =
+        `${currentSet.name} · ${currentSet.series} · cargadas ${loadedUnique}/${total} cartas · ${formatDate(currentSet.releaseDate)}`;
+
+      // Si la API devuelve menos de una página completa o ya llegamos al total, paramos.
+      if (!data.data || data.data.length < pageSize || loadedUnique >= total) break;
+      page++;
+    } while (page <= maxPages);
+
+    currentCards = uniqueByCardId(cards);
+
+    const repeatedNames = getRepeatedNames(currentCards);
+    if (repeatedNames.length) {
+      console.info(
+        `[PokeClaud] ${repeatedNames.length} nombres repetidos en ${setId}. Normalmente son variantes oficiales: Rare, Illustration Rare, SIR, Hyper Rare, etc.`,
+        repeatedNames.slice(0, 20)
+      );
+    }
+
+    const rarities = [...new Set(currentCards.map(c => c.rarity).filter(Boolean))].sort();
     document.getElementById('filterRarity').innerHTML =
       '<option value="">Todas las rarezas</option>' +
       rarities.map(r => `<option value="${r}">${r}</option>`).join('');
@@ -1057,6 +1134,7 @@ function filterCards() {
   const q = document.getElementById('searchCards').value.toLowerCase();
   const rarity = document.getElementById('filterRarity').value;
   const sort = document.getElementById('sortCards').value;
+  const variantMode = document.getElementById('filterVariants').value;
 
   filteredCards = currentCards.filter(c =>
     (!q || c.name.toLowerCase().includes(q) || (c.number||'').includes(q)) &&
@@ -1065,13 +1143,10 @@ function filterCards() {
 
   const [field, dir] = sort.split('-');
   filteredCards.sort((a, b) => {
-    if (field === 'number') {
-      const an = parseInt(a.number) || 9999;
-      const bn = parseInt(b.number) || 9999;
-      return dir === 'asc' ? an - bn : bn - an;
-    }
+    if (field === 'number') return compareCardNumber(a, b, dir);
     if (field === 'name') {
-      return dir === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      const result = a.name.localeCompare(b.name) || compareCardNumber(a, b, 'asc');
+      return dir === 'asc' ? result : -result;
     }
     if (field === 'price') {
       const ap = getCardPrice(a) || 0;
@@ -1080,6 +1155,11 @@ function filterCards() {
     }
     return 0;
   });
+
+  // Esto NO borra cartas de la API: solo cambia la vista para evitar ver varias variantes con el mismo nombre.
+  if (variantMode === 'one-name') {
+    filteredCards = uniqueByCardName(filteredCards);
+  }
 
   currentPage = 1;
   renderCards();
